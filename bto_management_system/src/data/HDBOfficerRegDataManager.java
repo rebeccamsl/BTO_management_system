@@ -3,7 +3,7 @@ package data;
 import models.HDBOfficerRegistration;
 import enums.RequestStatus;
 import utils.DateUtils;
-import utils.TextFormatUtil; // Added
+import utils.TextFormatUtil; 
 
 import java.io.IOException;
 import java.util.Date;
@@ -75,4 +75,3 @@ public class HDBOfficerRegDataManager extends AbstractCsvDataManager<Integer, HD
         return reg.getRegistrationId();
     }
 }
-    
