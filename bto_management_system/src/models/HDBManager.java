@@ -1,0 +1,12 @@
+package models; // Updated package
+
+import enums.MaritalStatus; // Updated import
+import enums.UserRole; // Updated import
+
+public class HDBManager extends User {
+     private static final long serialVersionUID = 1L;
+
+    public HDBManager(String nric, String password, String name, int age, MaritalStatus maritalStatus) {
+        super(nric, password, name, age, maritalStatus, UserRole.MANAGER);
+    }
+}
