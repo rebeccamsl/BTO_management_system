@@ -1,4 +1,4 @@
-package models; // Updated package
+package models; 
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +20,7 @@ public class Report {
     public Map<String, String> getFiltersUsed() { return filtersUsed; }
     public List<ReportRow> getReportData() { return reportData; }
 
-    // Inner class or separate class for report rows
+    // class for report rows
     public static class ReportRow {
         private String applicantName;
         private String applicantNric;
@@ -53,7 +53,7 @@ public class Report {
         }
     }
 
-    // Method to display the report
+    // display report
     public void display() {
         System.out.println("\n==================================================");
         System.out.println("      " + reportTitle);
@@ -63,10 +63,9 @@ public class Report {
         if (reportData == null || reportData.isEmpty()) {
             System.out.println("No records found matching the criteria.");
         } else {
-            // Example Header - adjust spacing as needed
              System.out.println(String.format("%-20s | %-9s | %-3s | %-8s | %-8s | %s",
                                  "Applicant Name", "NRIC", "Age", "Marital", "FlatType", "Project Name"));
-             System.out.println("-".repeat(100)); // Separator
+             System.out.println("-".repeat(100)); 
             for (ReportRow row : reportData) {
                 System.out.println(row.toString());
             }

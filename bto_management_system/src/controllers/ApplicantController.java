@@ -49,7 +49,7 @@ public class ApplicantController extends UserController implements UserControlle
         }
 
         do {
-            choice = applicantMenu.displayApplicantMenu(); // Get choice from view
+            choice = applicantMenu.displayApplicantMenu(); 
 
             try {
                 switch (choice) {

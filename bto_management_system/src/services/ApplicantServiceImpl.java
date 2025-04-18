@@ -163,19 +163,16 @@ public class ApplicantServiceImpl implements IApplicantService {
                     // The value here should be the display name ("3-Room")
                     FlatType filterType = FlatType.fromDisplayName(value.trim());
                     if (filterType == null) {
-                        // This shouldn't happen if the View validated correctly
                         System.err.println("Internal Warning: Invalid flat type '" + value + "' reached service filter logic.");
                         continue; // Ignore invalid filter from map
                     }
-                    // *** Check if the project OFFERS this type (Total Units > 0) ***
                     if (project.getTotalUnits().getOrDefault(filterType, 0) <= 0) {
-                        return false; // Project doesn't offer this type, so filter fails
+                        return false; 
                     }
-                    break; // IMPORTANT: Added break statement here!
+                    break; 
                 default:
-                    // Ignore unknown filter keys silently
             }
         }
-        return true; // All active, valid filter conditions were met
+        return true; 
     }
 }

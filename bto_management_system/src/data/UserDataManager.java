@@ -1,7 +1,7 @@
 package data;
 
-import models.*; // Import all models
-import enums.*; // Import all enums
+import models.*; 
+import enums.*; 
 import utils.DateUtils;
 import utils.NRICValidator;
 
@@ -25,7 +25,7 @@ public class UserDataManager extends AbstractCsvDataManager<String, User> {
         String nric = safeParseString(values[0]);
         String password = safeParseString(values[1]);
         String name = safeParseString(values[2]);
-        int age = safeParseInt(values[3], 0); // Default age 0 if parse fails
+        int age = safeParseInt(values[3], 0); 
         MaritalStatus maritalStatus = MaritalStatus.valueOf(safeParseString(values[4]).toUpperCase());
         UserRole role = UserRole.valueOf(safeParseString(values[5]).toUpperCase());
 
@@ -34,7 +34,7 @@ public class UserDataManager extends AbstractCsvDataManager<String, User> {
             System.err.println("Skipping user row: Invalid NRIC format '" + nric + "'");
             return null;
         }
-         if (age <= 0) { // Assuming age must be positive
+         if (age <= 0) { 
              System.err.println("Skipping user row: Invalid age '" + values[3] + "' for NRIC " + nric);
              return null;
          }
@@ -45,7 +45,6 @@ public class UserDataManager extends AbstractCsvDataManager<String, User> {
             case APPLICANT:
                 return new Applicant(nric, password, name, age, maritalStatus);
             case OFFICER:
-                 // Need to load handlingProjectId separately if stored, or manage in service layer
                 return new HDBOfficer(nric, password, name, age, maritalStatus);
             case MANAGER:
                 return new HDBManager(nric, password, name, age, maritalStatus);

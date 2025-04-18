@@ -27,7 +27,7 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         // 4. Verify Password (Plain text comparison as per brief's assumption)
-        // IMPORTANT: In a real system, use secure password hashing and comparison.
+
         if (user.getPassword().equals(password)) {
             // 5. Set current user in AuthStore
             AuthStore.setCurrentUser(user);
@@ -41,7 +41,6 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public void logout() {
         AuthStore.clearCurrentUser();
-        // Perform any other necessary logout cleanup if required
-        System.out.println(TextFormatUtil.info("Logout successful.")); // Optional direct feedback
+        System.out.println(TextFormatUtil.info("Logout successful.")); 
     }
 }

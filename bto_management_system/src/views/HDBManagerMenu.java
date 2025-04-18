@@ -228,7 +228,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
        }
 
 
-     // --- Approval Menus ---
+     // Approval Menu
      /** Displays menu for managing officer registrations. */
      public int displayOfficerRegistrationMenu() {
          CommonView.displayNavigationBar("Manage Officer Registrations for Selected Project");
@@ -270,7 +270,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          else CommonView.displayError("Failed to " + action + " officer registration.");
      }
 
-      // --- BTO Application Approval ---
+      // BTO Application Approval
        /** Displays menu for managing BTO applications. */
        public int displayBTOApplicationMenu() {
          CommonView.displayNavigationBar("Manage BTO Applications for Selected Project");
@@ -318,7 +318,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
            else CommonView.displayError("Failed to " + action + " BTO application.");
        }
 
-        // --- Withdrawal Approval ---
+        // Withdrawal Approval
         /** Displays menu for managing withdrawal requests. */
         public int displayWithdrawalMenu() {
              CommonView.displayNavigationBar("Manage Application Withdrawals for Selected Project");
@@ -334,7 +334,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
             else CommonView.displayError("Failed to " + action + " withdrawal request.");
         }
 
-     // --- Enquiries ---
+     // Enquiries
      /** Displays choice for viewing enquiries. */
       public int displayEnquiryViewChoice() {
           System.out.println("\n--- View Enquiries ---");
@@ -343,12 +343,9 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
           System.out.println("0. Back");
           return InputUtil.readIntInRange("Enter choice: ", 0, 2);
       }
-      // Re-use ApplicantMenu.displayEnquiryList for display
-      // Re-use ApplicantMenu.getEnquiryIdToManage for ID input
-      // Re-use HDBOfficerMenu.getReplyInput for reply text
-      // Re-use HDBOfficerMenu.displayReplyResult for result
 
-     // --- Reporting ---
+
+     // Reporting
      /** Prompts for report filter criteria. */
      public Map<String, String> getReportFilters() {
          Map<String, String> filters = new HashMap<>();
@@ -394,7 +391,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          }
      }
 
-    // --- Password Change Methods (Implementation of PasswordChangeView) ---
+    // Password Change Methods, Implementation of PasswordChangeView
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }

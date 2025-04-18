@@ -5,5 +5,5 @@ public enum BTOApplicationStatus {
     SUCCESSFUL,
     UNSUCCESSFUL,
     BOOKED,
-    WITHDRAWN // Added status for clarity after withdrawal approval
+    WITHDRAWN 
 }

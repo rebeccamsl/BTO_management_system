@@ -9,7 +9,6 @@ public class DateUtils {
     // Define a consistent date format for storage and display
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
-    // Prevent instantiation
     private DateUtils() {}
 
     /**

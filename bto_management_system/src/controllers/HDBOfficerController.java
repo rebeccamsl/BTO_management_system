@@ -1,7 +1,7 @@
 package controllers;
 
 import views.HDBOfficerMenu;
-import views.ApplicantMenu; // Re-use some applicant views
+import views.ApplicantMenu; 
 import views.CommonView;
 import services.*;
 import interfaces.*;
@@ -27,7 +27,7 @@ public class HDBOfficerController extends UserController implements UserControll
     private final IApplicantService applicantService;
     private final IEnquiryService enquiryService;
     private final IFlatBookingService bookingService;
-    // userService inherited
+    
 
     private Map<String, String> lastProjectFilters = new HashMap<>();
 
@@ -88,7 +88,8 @@ public class HDBOfficerController extends UserController implements UserControll
     private void viewHandlingProjectDetails(String officerNric) {
         Project handlingProject = projectService.getHandlingProjectForOfficer(officerNric);
         // Display details using the officer menu's method
-        officerMenu.displayProjectDetails(handlingProject); // Handles null case internally
+        officerMenu.displayProjectDetails(handlingProject); 
+        // Handles null case internally
     }
 
     private void registerToHandleProject(String officerNric) {
@@ -102,13 +103,13 @@ public class HDBOfficerController extends UserController implements UserControll
              return;
          }
 
-         // *** FIX: Use the correct view method ***
+      
          officerMenu.displayProjectsForRegistration(allOpenProjects);
 
          int projectId = applicantView.getProjectSelection("Enter Project ID to register for"); // Reuse prompt is ok
          if (projectId == 0) { CommonView.displayMessage("Registration cancelled."); return; }
 
-         // Verify selection was in the list shown (optional but good practice)
+         // Verify selection was in the list shown
          boolean isValidChoice = allOpenProjects.stream().anyMatch(p -> p.getProjectId() == projectId);
          if (!isValidChoice) {
               CommonView.displayError("Invalid Project ID selected from the list.");
@@ -129,7 +130,7 @@ public class HDBOfficerController extends UserController implements UserControll
          this.lastProjectFilters = applicantView.getProjectFilters();
          List<Project> projects = projectService.getVisibleProjectsForApplicant(officerNric);
          projects = applicantService.filterProjects(projects, lastProjectFilters);
-         applicantView.displayProjectList(projects); // Reuse applicant view for listing
+         applicantView.displayProjectList(projects); 
      }
 
      private void applyForProject(String officerNric) {
@@ -160,7 +161,6 @@ public class HDBOfficerController extends UserController implements UserControll
         }
 
          User officerAsApplicant = DataStore.getUserByNric(officerNric);
-         // Use the helper method to find applicable types for THIS applicant and THIS project
          List<FlatType> applicableTypes = getApplicableFlatTypesForApplicant(officerAsApplicant, selectedProject);
 
         if (applicableTypes.isEmpty()) {
@@ -171,12 +171,11 @@ public class HDBOfficerController extends UserController implements UserControll
          FlatType selectedFlatType = applicantView.getFlatTypeSelection(applicableTypes);
          if (selectedFlatType == null) return; // View already displayed cancel message
 
-        // Service layer handles final checks (incl. officer not handling this project)
+        // handles final checks (incl. officer not handling this project)
         BTOApplication newApplication = applicantService.applyForProject(officerNric, projectId, selectedFlatType);
         applicantView.displayApplicationResult(newApplication); // Reuse applicant view
      }
 
-      // Helper (copied from ApplicantController, consider moving to a shared Util/Service if identical)
      private List<FlatType> getApplicableFlatTypesForApplicant(User applicant, Project project) {
         List<FlatType> types = new ArrayList<>();
          if (applicant == null || project == null) return types;
@@ -270,26 +269,25 @@ public class HDBOfficerController extends UserController implements UserControll
          int bookingId = officerMenu.getBookingIdForReceipt();
          if (bookingId == 0) return; // Cancelled
 
-         // Permission check: Should officer only be able to gen receipt for their handled project?
+         
          FlatBooking booking = bookingService.getBookingById(bookingId);
          Project handlingProject = projectService.getHandlingProjectForOfficer(AuthStore.getCurrentUserNric());
 
          if (booking != null && handlingProject != null && booking.getProjectId() != handlingProject.getProjectId()) {
              CommonView.displayWarning("Warning: Generating receipt for a booking not related to your currently handled project.");
-             // Decide whether to allow or deny based on strictness
-             // Allow for now:
-             // if (!InputUtil.readBooleanYN("This booking is for a different project. Proceed anyway? (y/n): ")) return;
+             
          } else if (booking != null && handlingProject == null) {
               CommonView.displayWarning("Warning: You are not currently handling a project, but proceeding to generate receipt.");
          }
 
 
          String receipt = bookingService.generateBookingReceipt(bookingId);
-         officerMenu.displayReceipt(receipt); // View handles error display if receipt is null/error string
+         officerMenu.displayReceipt(receipt); 
+         // View handles error display if receipt is null/error string
      }
 
      // --- Password Change Implementation ---
-      @Override public void displayPasswordChangePrompt() { officerMenu.displayPasswordChangePrompt(); }
+     @Override public void displayPasswordChangePrompt() { officerMenu.displayPasswordChangePrompt(); }
      @Override public String readOldPassword() { return officerMenu.readOldPassword(); }
      @Override public String readNewPassword() { return officerMenu.readNewPassword(); }
      @Override public String readConfirmNewPassword() { return officerMenu.readConfirmNewPassword(); }

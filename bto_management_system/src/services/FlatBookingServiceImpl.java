@@ -10,10 +10,10 @@ import utils.TextFormatUtil;
 
 public class FlatBookingServiceImpl implements IFlatBookingService {
 
-    private final IProjectService projectService; // Inject dependency
+    private final IProjectService projectService; 
 
     public FlatBookingServiceImpl() {
-        this.projectService = new ProjectServiceImpl(); // Simple instantiation
+        this.projectService = new ProjectServiceImpl(); 
     }
 
     @Override

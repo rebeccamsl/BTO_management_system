@@ -7,7 +7,7 @@ import utils.TextFormatUtil;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.regex.Pattern; // Import Pattern for escaping delimiter
+import java.util.regex.Pattern; 
 import java.util.stream.Collectors;
 
 /**
@@ -17,7 +17,6 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
 
     @Override
     protected String getHeaderLine() {
-        // Matches the CSV structure expected and generated
         return "ProjectID,ProjectName,Neighborhood,TotalUnits,AvailableUnits,OpeningDate,ClosingDate,ManagerNRIC,MaxOfficerSlots,Visibility,AssignedOfficerNRICs";
     }
 
@@ -29,10 +28,11 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
             return null;
         }
 
-        // --- Parse main fields ---
+        // Parse main fields 
         int projectId = safeParseInt(values[0], -1);
         String projectName = safeParseString(values[1]);
         String neighborhood = safeParseString(values[2]);
+        
         // Remove potential surrounding quotes if CSV writer added them unnecessarily
         if (projectName.startsWith("\"") && projectName.endsWith("\"")) {
             projectName = projectName.substring(1, projectName.length() - 1).replace("\"\"", "\"");
@@ -41,7 +41,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
             neighborhood = neighborhood.substring(1, neighborhood.length() - 1).replace("\"\"", "\"");
         }
 
-        // --- Parse complex fields using helpers ---
+        // Parse complex fields using helpers 
         Map<FlatType, Integer> totalUnits = parseFlatTypeMap(values[3]);
         Map<FlatType, Integer> availableUnits = parseFlatTypeMap(values[4]);
 
@@ -54,7 +54,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
         String officersStr = (values.length > 10) ? safeParseString(values[10]) : ""; // Handle potential missing last column if empty
         List<String> officerNrics = parseStringList(officersStr);
 
-        // --- Critical Data Validation ---
+        // Critical Data Validation 
         if (projectId <= 0 || projectName.isEmpty() || managerNric.isEmpty() || maxSlots < 0 ) {
             System.err.println(TextFormatUtil.error("Skipping project row: Invalid critical data (ID<=0, Name empty, Manager empty, or Slots<0) for row starting with ID " + values[0]));
             return null;
@@ -69,7 +69,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
          }
 
 
-        // --- Post-parsing Unit Consistency Validation ---
+        // Post-parsing Unit Consistency Validation
         if (totalUnits.values().stream().anyMatch(v -> v < 0) || availableUnits.values().stream().anyMatch(v -> v < 0)) {
              System.err.println(TextFormatUtil.error("Skipping project row: Negative unit count found for project " + projectId));
              return null;
@@ -92,8 +92,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
             }
         }
 
-        // --- Construct and return the Project object ---
-        // Use the constructor that accepts all parsed fields
+        // Construct and return the Project object
         return new Project(projectId, projectName, neighborhood, totalUnits, availableUnits,
                            openingDate, closingDate, managerNric, officerNrics, maxSlots, visibility);
     }
@@ -131,7 +130,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
         return project.getProjectId();
     }
 
-    // --- Helper Methods ---
+    // Helper Methods
 
     /**
      * Parses strings like "TWO_ROOM:50;THREE_ROOM:30" into a Map<FlatType, Integer>.
@@ -141,7 +140,7 @@ public class ProjectDataManager extends AbstractCsvDataManager<Integer, Project>
         Map<FlatType, Integer> map = new HashMap<>();
         if (data == null || data.trim().isEmpty()) return map;
 
-        // Split by the defined list delimiter, escaping it for regex safety
+        // Split by the defined list delimiter
         String[] pairs = data.split(Pattern.quote(LIST_DELIMITER));
 
         for (String pair : pairs) {

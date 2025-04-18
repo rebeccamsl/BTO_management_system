@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.Objects; // Import Objects
+import java.util.Objects; 
 
 
 public class DataStore {
@@ -35,7 +35,7 @@ public class DataStore {
     private DataStore() {}
 
     public static void initialize() {
-        System.out.println("Initializing DataStore..."); // Keep this informational one
+        System.out.println("Initializing DataStore..."); 
         try {
             userData = userDataManager.load(FilePathConstants.USERS_FILE);
             projectData = projectDataManager.load(FilePathConstants.PROJECTS_FILE);
@@ -44,8 +44,8 @@ public class DataStore {
             officerRegistrationData = officerRegDataManager.load(FilePathConstants.OFFICER_REGISTRATIONS_FILE);
             flatBookingData = flatBookingDataManager.load(FilePathConstants.FLAT_BOOKINGS_FILE);
 
-            setInitialOfficerHandlingState(); // Set officer state after loading
-            updateIdCounters(); // Update ID counters
+            setInitialOfficerHandlingState(); 
+            updateIdCounters(); 
 
             System.out.println("DataStore initialized successfully.");
 
@@ -57,7 +57,6 @@ public class DataStore {
     }
 
     private static void setInitialOfficerHandlingState() {
-        // Removed debug print statements
         Map<String, HDBOfficerRegistration> latestApprovedRegMap = new HashMap<>();
 
         officerRegistrationData.values().stream()
@@ -71,13 +70,11 @@ public class DataStore {
                 Project project = projectData.get(latestReg.getProjectId());
                 if (project != null) {
                     ((HDBOfficer) user).setHandlingProjectId(latestReg.getProjectId());
-                    // Removed debug print
                 } else {
                      System.err.println(TextFormatUtil.warning("Warning during init: Officer " + officerNric + " approved for non-existent project " + latestReg.getProjectId() + ". Handling state not set."));
                 }
             }
         });
-        // Removed debug print statement
     }
 
     private static void updateIdCounters() {
@@ -86,11 +83,11 @@ public class DataStore {
          Enquiry.updateIdCounter(enquiryData.keySet().stream().max(Integer::compareTo).orElse(0));
          HDBOfficerRegistration.updateIdCounter(officerRegistrationData.keySet().stream().max(Integer::compareTo).orElse(0));
          FlatBooking.updateIdCounter(flatBookingData.keySet().stream().max(Integer::compareTo).orElse(0));
-         // Removed debug print statement
+
     }
 
     public static void saveAllData() {
-        System.out.println("Saving data..."); // Keep informational message
+        System.out.println("Saving data...");
         try {
             userDataManager.save(FilePathConstants.USERS_FILE, userData);
             projectDataManager.save(FilePathConstants.PROJECTS_FILE, projectData);
@@ -105,7 +102,7 @@ public class DataStore {
         }
     }
 
-    // --- Getters and other methods ---
+    // Getters and other methods 
     public static Map<String, User> getUsers() { return userData; }
     public static Map<Integer, Project> getProjects() { return projectData; }
     public static Map<Integer, BTOApplication> getApplications() { return applicationData; }

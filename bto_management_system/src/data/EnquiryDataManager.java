@@ -81,28 +81,24 @@ public class EnquiryDataManager extends AbstractCsvDataManager<Integer, Enquiry>
         return enquiry.getEnquiryId();
     }
 
-    // --- Helper methods (now using protected LIST_DELIMITER from Abstract class) ---
-    // *** FIX: Changed visibility from private to protected ***
+    // Helper methods
     protected List<String> parseStringList(String data) {
         if (data == null || data.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        // Split by LIST_DELIMITER (handle potential regex special chars if needed)
-        return Arrays.stream(data.split("\\" + LIST_DELIMITER)) // Escape if delimiter is special regex char
+        // Split by LIST_DELIMITER
+        return Arrays.stream(data.split("\\" + LIST_DELIMITER)) 
                      .map(String::trim)
                      .filter(s -> !s.isEmpty())
-                      // Basic de-quoting if replies were quoted (optional)
-                     // .map(s -> s.startsWith("\"") && s.endsWith("\"") ? s.substring(1, s.length() - 1).replace("\"\"", "\"") : s)
+                      // Basic de-quoting if replies quoted 
                      .collect(Collectors.toList());
     }
 
-    // *** FIX: Changed visibility from private to protected ***
     protected String formatStringList(List<String> list) {
         if (list == null || list.isEmpty()) return "";
-        // Join using LIST_DELIMITER. Consider quoting elements if they might contain the delimiter.
+        // Join using LIST_DELIMITER
         return list.stream()
                   // Basic quoting if element contains comma or list delimiter or quote
-                  // .map(s -> "\"" + s.replace("\"", "\"\"") + "\"")
                    .collect(Collectors.joining(LIST_DELIMITER));
     }
 }

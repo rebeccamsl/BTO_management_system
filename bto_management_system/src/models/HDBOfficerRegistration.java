@@ -1,6 +1,6 @@
-package models; // Updated package
+package models; 
 
-import enums.RequestStatus; // Updated import
+import enums.RequestStatus; 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,7 +48,7 @@ public class HDBOfficerRegistration implements Serializable {
     public Date getRequestDate() { return requestDate; }
     public Date getDecisionDate() { return decisionDate; }
 
-    // Setters (used by Manager Service)
+    // Setters (Manager Service)
     public void approve() {
         if (this.status == RequestStatus.PENDING) {
             this.status = RequestStatus.APPROVED;

@@ -136,7 +136,7 @@ public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> 
     /** Extracts the key from a model object for map storage. Must be implemented by subclasses. */
     protected abstract K getKey(V object);
 
-     // --- Helper Methods for Subclasses ---
+     //Helper Methods for Subclasses
 
      /** Safely trims string, returns empty string if input is null. */
     protected String safeParseString(String value) {
@@ -157,7 +157,6 @@ public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> 
      /** Safely parses boolean ("true" case-insensitive), returns default otherwise. */
      protected boolean safeParseBoolean(String value, boolean defaultValue) {
          if (value == null || value.trim().isEmpty()) return defaultValue;
-         // Use equalsIgnoreCase for robust boolean parsing
          return "true".equalsIgnoreCase(value.trim());
      }
 }

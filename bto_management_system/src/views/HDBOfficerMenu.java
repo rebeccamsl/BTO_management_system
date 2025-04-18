@@ -5,11 +5,11 @@ import utils.TextFormatUtil;
 import models.*;
 import enums.*;
 import stores.DataStore;
-import services.FlatBookingServiceImpl; // Only used temporarily for receipt display convenience
+import services.FlatBookingServiceImpl; 
 
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator; // Import Comparator
+import java.util.Comparator;
 
 /**
  * Handles the display and input for the HDB Officer user interface.
@@ -17,7 +17,6 @@ import java.util.Comparator; // Import Comparator
  */
 public class HDBOfficerMenu implements controllers.UserController.PasswordChangeView {
 
-     // *** FIX: Restore the main menu display method ***
      /**
       * Displays the main menu for HDB Officers and gets their choice.
       * @param handlingProjectName The name of the project currently handled by the officer, or null.
@@ -34,7 +33,6 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
         System.out.println("4. View Eligible BTO Projects (Apply Filters)");
         System.out.println("5. Apply for BTO Project");
         System.out.println("6. View My BTO Application Status");
-        // Applicant actions like withdrawal, enquiry management accessible via Applicant logic flow
         System.out.println("--- Officer Duties ---");
         System.out.println("7. View/Reply Enquiries for Handling Project");
         System.out.println("8. Assist Applicant Flat Booking");
@@ -42,10 +40,9 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
         System.out.println("--- Account ---");
         System.out.println("10. Change Password");
         System.out.println("0. Logout");
-        // Read input within the valid range of menu options
         return InputUtil.readIntInRange("Enter your choice: ", 0, 10);
     }
-    // *** End Fix ***
+
 
 
     /**
@@ -145,7 +142,7 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
          else CommonView.displayError("Failed to " + action + " registration request.");
      }
 
-     // --- Enquiry Management ---
+     //Enquiry Management
      public void displayProjectEnquiryList(List<Enquiry> enquiries) {
         new ApplicantMenu().displayEnquiryList("Enquiries for Handling Project", enquiries);
     }
@@ -157,7 +154,7 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
          else CommonView.displayError("Failed to submit reply.");
      }
 
-     // --- Flat Booking Assistance ---
+     //Flat Booking help
      public String getApplicantNricForBooking() {
          return InputUtil.readString("Enter Applicant's NRIC to assist with booking: ");
      }
@@ -197,7 +194,7 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
            }
       }
 
-    // --- Password Change Methods ---
+    // Password Change Methods
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }

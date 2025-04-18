@@ -4,8 +4,7 @@ import interfaces.IProjectService;
 import models.*;
 import enums.*;
 import stores.DataStore;
-// AuthStore might not be needed directly here unless checking creator role deeply
-// import stores.AuthStore;
+import stores.AuthStore;
 import utils.DateUtils;
 import utils.TextFormatUtil;
 
@@ -18,9 +17,6 @@ import java.util.stream.Collectors;
  */
 public class ProjectServiceImpl implements IProjectService {
 
-    // Constants potentially used elsewhere but defined here for context if needed
-    // private static final int MIN_SINGLE_AGE = 35;
-    // private static final int MIN_MARRIED_AGE = 21;
 
     /**
      * Retrieves all projects, sorted by name. Usually for Manager view.
@@ -55,7 +51,7 @@ public class ProjectServiceImpl implements IProjectService {
         return allProjects.stream()
                 .filter(Project::isVisible) // Filter 1: Project visibility toggle must be ON
                 .filter(p -> p.isWithinApplicationPeriod(today)) // Filter 2: Current date must be within application period
-                .sorted(Comparator.comparing(Project::getProjectName)) // Sort result
+                .sorted(Comparator.comparing(Project::getProjectName)) 
                 .collect(Collectors.toList());
     }
 
@@ -68,7 +64,6 @@ public class ProjectServiceImpl implements IProjectService {
     public Project getProjectById(int projectId) {
         Project project = DataStore.getProjectById(projectId);
         if (project == null) {
-            // Log this warning as it might indicate an issue elsewhere if ID was expected to be valid
             System.err.println(TextFormatUtil.warning("Project with ID " + projectId + " not found in DataStore."));
         }
         return project;
@@ -106,7 +101,7 @@ public class ProjectServiceImpl implements IProjectService {
              System.err.println(TextFormatUtil.error("Create project failed: Invalid number of officer slots (must be 1-10)."));
              return null;
          }
-          // 3. Business Rule Validation: Manager Period Conflict
+          // 3. Validation: Manager Period Conflict
           if (isManagerHandlingAnotherProjectInPeriod(managerNric, open, close)) {
              System.err.println(TextFormatUtil.error("Create project failed: Manager ("+managerNric+") is already handling another project during this application period."));
              return null;
@@ -135,7 +130,7 @@ public class ProjectServiceImpl implements IProjectService {
              .anyMatch(existingProject -> {
                  Date existingOpen = existingProject.getApplicationOpeningDate();
                  Date existingClose = existingProject.getApplicationClosingDate();
-                 // Check for period overlap: !(newEnd < existingStart || newStart > existingEnd)
+                 // Check for period overlap
                  return existingOpen != null && existingClose != null &&
                         !newClose.before(existingOpen) && !newOpen.after(existingClose);
              });
@@ -162,7 +157,7 @@ public class ProjectServiceImpl implements IProjectService {
                 return false;
            }
 
-            // 2. Extract and Validate *New* Data from the container object
+            // 2. Extract and Validate new Data from the container object
              Date newOpen = updatedDetailsContainer.getApplicationOpeningDate();
              Date newClose = updatedDetailsContainer.getApplicationClosingDate();
              int newSlots = updatedDetailsContainer.getMaxOfficerSlots();
@@ -187,7 +182,7 @@ public class ProjectServiceImpl implements IProjectService {
                   System.err.println(TextFormatUtil.error("Edit project failed: Unit counts cannot be negative."));
                   return false;
               }
-              // 3. Business Rule Validation: Manager Period Conflict (excluding self)
+              // 3. Validation: Manager Period Conflict (excluding self)
              if (isManagerHandlingAnotherProjectInPeriodExcludingSelf(editorNric, newOpen, newClose, projectId)) {
                   System.err.println(TextFormatUtil.error("Edit project failed: Manager ("+editorNric+") is already handling another project during the updated application period."));
                   return false;
@@ -219,15 +214,14 @@ public class ProjectServiceImpl implements IProjectService {
             // Only update units if allowed (no apps exist or units weren't changed by user)
             projectToEdit.setTotalUnits(unitsToActuallySet);
 
-            // Recalculate available units ONLY if total units were successfully changed (i.e., no apps existed)
+            // Recalculate available units ONLY if total units were successfully changed 
             if (unitsWereChanged) { // Check the flag set when units were allowed to change
                  // Reset available counts to match the new total counts
                  projectToEdit.setAvailableUnits(new HashMap<>(unitsToActuallySet));
                  System.out.println(TextFormatUtil.info("Available units have been reset to match the new total unit counts."));
             }
-             // Visibility is handled by toggleProjectVisibility
 
-            DataStore.saveAllData(); // Persist all changes
+            DataStore.saveAllData(); 
             System.out.println("Debug: Project " + projectId + " edited successfully.");
             return true;
      }
@@ -267,7 +261,7 @@ public class ProjectServiceImpl implements IProjectService {
                 return false;
            }
 
-           // Business Rule Check: Cannot delete if bookings exist
+           // Check: Cannot delete if bookings exist
           boolean hasBookings = DataStore.getApplications().values().stream()
                                 .anyMatch(a -> a.getProjectId() == projectId && a.getStatus() == BTOApplicationStatus.BOOKED);
           if (hasBookings) {
@@ -275,21 +269,17 @@ public class ProjectServiceImpl implements IProjectService {
               return false;
           }
 
-          // Confirmation (View layer should handle this, but double check is okay)
-          // Warning about deleting associated data is good practice
+
           System.out.println(TextFormatUtil.warning("Deleting project " + projectId + " will also remove associated applications, enquiries, and officer registrations."));
 
 
-          // Proceed with deletion of project and related data
           DataStore.removeProject(projectId);
-          // Use removeIf for cleaner removal from related maps
           DataStore.getApplications().values().removeIf(a -> a.getProjectId() == projectId);
           DataStore.getEnquiries().values().removeIf(e -> e.getProjectId() == projectId);
           DataStore.getOfficerRegistrations().values().removeIf(r -> r.getProjectId() == projectId);
-          // Flat bookings should be empty based on check above, but remove just in case
           DataStore.getFlatBookings().values().removeIf(b -> b.getProjectId() == projectId);
 
-          DataStore.saveAllData(); // Persist deletions
+          DataStore.saveAllData(); 
           System.out.println("Debug: Project " + projectId + " and associated records deleted by " + deleterNric);
           return true;
      }
@@ -356,17 +346,15 @@ public class ProjectServiceImpl implements IProjectService {
                return false;
           }
 
-        // Project model handles slot check and duplicate check
         boolean added = project.addOfficer(officerNric);
         if (added) {
              // Update the officer's state to show they are handling this project
              if (officer instanceof HDBOfficer) {
                  ((HDBOfficer) officer).setHandlingProjectId(projectId);
              }
-            DataStore.saveAllData(); // Save project and potentially officer state
+            DataStore.saveAllData();
             return true;
         } else {
-            // Error should be logged by project.addOfficer if needed, or log here.
             System.err.println(TextFormatUtil.error("Internal error (addOfficerToProject): Failed to add officer " + officerNric + " to project " + projectId + " (check slots/duplicates)."));
             return false;
         }
@@ -390,16 +378,16 @@ public class ProjectServiceImpl implements IProjectService {
 
          boolean removed = project.removeOfficer(officerNric);
          if (removed) {
-              // Clear the officer's state only if they were handling THIS project
+              // Clear the officer's state only if they handling THIS project
               if (officer instanceof HDBOfficer) {
                    if (Objects.equals(((HDBOfficer) officer).getHandlingProjectId(), projectId)) {
                         ((HDBOfficer) officer).clearHandlingProject();
                    }
               }
-            DataStore.saveAllData(); // Save project and potentially officer state
+            DataStore.saveAllData();
             return true;
         }
-        // Officer wasn't on the list, maybe log a warning but return false as no change occurred.
+        // Officer wasn't on the list
          System.err.println(TextFormatUtil.warning("Remove officer warning: Officer " + officerNric + " was not found in the assigned list for project " + projectId + "."));
         return false;
     }
@@ -423,9 +411,8 @@ public class ProjectServiceImpl implements IProjectService {
          }
         boolean success = project.decrementAvailableUnits(type);
         if (success) {
-            DataStore.saveAllData(); // Save change
+            DataStore.saveAllData(); 
         } else {
-            // Log the error that booking should fail due to no units
             System.err.println(TextFormatUtil.error("Internal error (decrementProjectUnit): No available units for " + type.getDisplayName() + " in project " + projectId + ". Booking cannot proceed."));
         }
         return success;
@@ -448,8 +435,8 @@ public class ProjectServiceImpl implements IProjectService {
               System.err.println(TextFormatUtil.error("Internal error (incrementProjectUnit): Flat type cannot be null for project " + projectId + "."));
               return false;
          }
-         project.incrementAvailableUnits(type); // Model handles logic & ceiling check
-         DataStore.saveAllData(); // Save change
+         project.incrementAvailableUnits(type); 
+         DataStore.saveAllData();
          return true;
     }
 
@@ -479,7 +466,7 @@ public class ProjectServiceImpl implements IProjectService {
              // Read the handling project ID stored in the officer object (set during approval)
              Integer handlingProjectId = officer.getHandlingProjectId();
              if (handlingProjectId != null) {
-                 return DataStore.getProjectById(handlingProjectId); // Return the project
+                 return DataStore.getProjectById(handlingProjectId);
              }
          }
          return null; // Not an officer or not currently handling any project

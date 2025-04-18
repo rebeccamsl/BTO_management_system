@@ -1,6 +1,6 @@
 package main;
 
-import controllers.ApplicantController; // Ensure this import is correct
+import controllers.ApplicantController; 
 import controllers.AuthController;
 import controllers.HDBManagerController;
 import controllers.HDBOfficerController;
@@ -16,7 +16,7 @@ public class BTOManagementApp {
 
     public static void main(String[] args) {
         try {
-            DataStore.initialize(); // Corrected call
+            DataStore.initialize(); 
 
             CommonView.displayWelcomeMessage();
             AuthController authController = new AuthController();
@@ -37,7 +37,7 @@ public class BTOManagementApp {
                 switch (currentUser.getRole()) {
                     case APPLICANT:
                         ApplicantController applicantController = new ApplicantController(); // Ensure type is correct
-                        applicantController.showApplicantMenu(); // <<< THIS IS LINE 53 - Ensure method exists and is public
+                        applicantController.showApplicantMenu(); // 
                         break;
                     case OFFICER:
                         HDBOfficerController officerController = new HDBOfficerController();
@@ -53,7 +53,6 @@ public class BTOManagementApp {
                 }
 
                 if (!AuthStore.isLoggedIn()) {
-                    // Loop continues back to login prompt
                 }
             }
 
@@ -68,11 +67,11 @@ public class BTOManagementApp {
             boolean gracefulExit = !AuthStore.isLoggedIn();
 
             if (gracefulExit) {
-                 CommonView.displayGoodbyeMessage(); // This call should now work if CommonView compiles
+                 CommonView.displayGoodbyeMessage(); 
                  DataStore.saveAllData();
             }
 
-             // InputUtil.closeScanner(); // Uncomment if needed
+           
              System.out.println("Application finished.");
         }
     }

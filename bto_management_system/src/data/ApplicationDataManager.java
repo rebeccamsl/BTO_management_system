@@ -4,10 +4,10 @@ import models.BTOApplication;
 import enums.BTOApplicationStatus;
 import enums.FlatType;
 import utils.DateUtils;
-import utils.TextFormatUtil; // Added for formatting
+import utils.TextFormatUtil; 
 
 import java.io.IOException;
-import java.util.Arrays; // For Arrays.toString in error message
+import java.util.Arrays; // 
 import java.util.Date;
 import java.util.Map;
 
@@ -18,7 +18,6 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
 
     @Override
     protected String getHeaderLine() {
-        // Ensure this order matches the CSV file and the parsing logic below
         return "AppID,ApplicantNRIC,ProjectID,Status,AppliedFlatType,BookedFlatType,BookingID,WithdrawalRequested,SubmissionDate";
     }
 
@@ -47,7 +46,7 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
         String applicantNric = safeParseString(values[nricIdx]);
         int projectId = safeParseInt(values[projIdIdx], -1);
 
-        // Robust Enum Parsing for Status
+        // Enum Parsing for Status
         BTOApplicationStatus status = null;
         String statusStr = safeParseString(values[statusIdx]);
         if (!statusStr.isEmpty()) {
@@ -62,7 +61,7 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
              return null;
         }
 
-        // Robust Enum Parsing for Applied Flat Type
+        // Enum Parsing for Applied Flat Type
         FlatType appliedFlatType = null;
         String appliedTypeStr = safeParseString(values[appliedTypeIdx]);
         if (!appliedTypeStr.isEmpty()) {
@@ -77,7 +76,7 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
              return null;
         }
 
-        // Booked Flat Type (Optional)
+        // Booked Flat Type
         FlatType bookedFlatType = null;
         String bookedTypeStr = safeParseString(values[bookedTypeIdx]);
         if (!bookedTypeStr.isEmpty()) {
@@ -85,11 +84,10 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
                 bookedFlatType = FlatType.valueOf(bookedTypeStr.toUpperCase());
             } catch (IllegalArgumentException e) {
                  System.err.println(TextFormatUtil.warning("Invalid BookedFlatType value '" + values[bookedTypeIdx] + "' for AppID " + values[appIdIdx] + ". Setting to null."));
-                 // Allow null if invalid, maybe data inconsistency
             }
         }
 
-        // Booking ID (Optional)
+        // Booking ID 
         Integer bookingId = null;
         String bookingIdStr = safeParseString(values[bookingIdIdx]);
         if (!bookingIdStr.isEmpty()) {
@@ -106,23 +104,22 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
         }
 
         // Withdrawal Requested
-        // Use safeParseBoolean helper from AbstractCsvDataManager if you added it, otherwise parse directly
         boolean withdrawalRequested = Boolean.parseBoolean(safeParseString(values[withdrawalIdx]).toLowerCase()); // Ensure lowercase "true"/"false"
 
         // Submission Date
         Date submissionDate = DateUtils.parseDate(safeParseString(values[submitDateIdx]));
 
-        // --- Final Critical Data Validation ---
+        // Final Critical Data Validation 
          if (appId <= 0 || applicantNric.isEmpty() || projectId <= 0 || status == null || appliedFlatType == null || submissionDate == null) {
               System.err.println(TextFormatUtil.error("Skipping application row: Invalid critical data (AppID, NRIC, ProjectID, Status, AppliedType, SubmitDate) after parsing for row starting with AppID " + values[appIdIdx] + ". Line: " + Arrays.toString(values)));
               return null;
          }
 
-         // Check consistency: If status is BOOKED, bookedFlatType and bookingId should ideally not be null
+         // If status is BOOKED, bookedFlatType and bookingId should not be null
          if (status == BTOApplicationStatus.BOOKED && (bookedFlatType == null || bookingId == null)) {
               System.err.println(TextFormatUtil.warning("Data inconsistency warning: Application " + appId + " has status BOOKED but missing BookedFlatType or BookingID."));
          }
-         // Check consistency: If status is not BOOKED, bookedFlatType and bookingId should be null
+         // If status is not BOOKED, bookedFlatType and bookingId should be null
           if (status != BTOApplicationStatus.BOOKED && (bookedFlatType != null || bookingId != null)) {
               System.err.println(TextFormatUtil.warning("Data inconsistency warning: Application " + appId + " status is " + status + " but has BookedFlatType or BookingID set. Clearing them."));
               bookedFlatType = null;
@@ -130,7 +127,7 @@ public class ApplicationDataManager extends AbstractCsvDataManager<Integer, BTOA
           }
 
 
-        // Construct the object using the parsed values
+        // Construct the object using parsed values
         return new BTOApplication(appId, applicantNric, projectId, status, appliedFlatType,
                                   bookedFlatType, bookingId, withdrawalRequested, submissionDate);
     }

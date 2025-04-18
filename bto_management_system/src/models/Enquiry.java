@@ -1,6 +1,6 @@
-package models; // Updated package
+package models;
 
-import enums.EnquiryStatus; // Updated import
+import enums.EnquiryStatus; 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;

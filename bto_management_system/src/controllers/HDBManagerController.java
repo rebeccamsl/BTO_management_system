@@ -24,20 +24,15 @@ import java.util.stream.Collectors;
 public class HDBManagerController extends UserController implements UserController.PasswordChangeView {
 
     private final HDBManagerMenu managerMenu;
-    private final ApplicantMenu applicantView; // For reusing list displays
-    private final HDBOfficerMenu officerView; // For reusing list displays
+    private final ApplicantMenu applicantView; 
+    private final HDBOfficerMenu officerView; 
     private final IProjectService projectService;
     private final IHDBOfficerService officerService;
     private final IHDBManagerService managerService;
     private final IEnquiryService enquiryService;
     private final IReportService reportService;
-    // *** FIX: Declare and instantiate IApplicantService ***
     private final IApplicantService applicantService;
-    // *** End Fix ***
-
-    // userService is inherited from UserController
-
-    // Store filters
+    
     private Map<String, String> lastProjectFilters = new HashMap<>();
     private Map<String, String> lastReportFilters = new HashMap<>();
 
@@ -47,15 +42,14 @@ public class HDBManagerController extends UserController implements UserControll
         this.managerMenu = new HDBManagerMenu();
         this.applicantView = new ApplicantMenu();
         this.officerView = new HDBOfficerMenu();
+        
         // Instantiate all required services
         this.projectService = new ProjectServiceImpl();
         this.officerService = new HDBOfficerServiceImpl();
         this.managerService = new HDBManagerServiceImpl();
         this.enquiryService = new EnquiryServiceImpl();
         this.reportService = new ReportServiceImpl();
-        // *** FIX: Instantiate IApplicantService ***
-        this.applicantService = new ApplicantServiceImpl(); // Now it's created
-        // *** End Fix ***
+        this.applicantService = new ApplicantServiceImpl(); 
     }
 
     /**
@@ -71,13 +65,13 @@ public class HDBManagerController extends UserController implements UserControll
 
         do {
             choice = managerMenu.displayManagerMenu();
-            try { // Add try-catch around actions
+            try { 
                 switch (choice) {
                     // Project Management
                     case 1: createNewProject(currentNric); break;
-                    case 2: viewMyManagedProjects(currentNric); break; // Combined view/select
-                    case 3: editMyManagedProject(currentNric); break; // Separate Edit action
-                    case 4: deleteMyManagedProject(currentNric); break; // Separate Delete action
+                    case 2: viewMyManagedProjects(currentNric); break; 
+                    case 3: editMyManagedProject(currentNric); break; 
+                    case 4: deleteMyManagedProject(currentNric); break; 
                     case 5: viewAllProjects(); break;
                     case 6: toggleProjectVisibility(currentNric); break;
                     // Approvals
@@ -128,7 +122,6 @@ public class HDBManagerController extends UserController implements UserControll
      private void viewMyManagedProjects(String managerNric) {
          List<Project> myProjects = projectService.getProjectsManagedBy(managerNric);
          managerMenu.displayProjectList("My Managed Projects", myProjects);
-         // This method now only views. Edit/Delete are separate options.
      }
 
      private void editMyManagedProject(String managerNric) {
@@ -175,9 +168,8 @@ public class HDBManagerController extends UserController implements UserControll
      private void viewAllProjects() {
           this.lastProjectFilters = applicantView.getProjectFilters(); // Use ApplicantMenu view for filters
          List<Project> allProjects = projectService.getAllProjects();
-         // Use ApplicantService filter method as it works on project list + filters map
          allProjects = applicantService.filterProjects(allProjects, lastProjectFilters);
-         managerMenu.displayProjectList("All Projects (Filtered)", allProjects); // Use ManagerMenu view for display
+         managerMenu.displayProjectList("All Projects (Filtered)", allProjects); 
      }
 
      private void toggleProjectVisibility(String managerNric) {
@@ -194,9 +186,8 @@ public class HDBManagerController extends UserController implements UserControll
          }
 
          boolean currentVisibility = selectedProject.isVisible();
-         // Ask for confirmation to toggle TO the opposite state
          if (managerMenu.getVisibilityToggleChoice(currentVisibility)) {
-              boolean targetVisibility = !currentVisibility; // The state we want to set
+              boolean targetVisibility = !currentVisibility; // state we want to set
               boolean success = projectService.toggleProjectVisibility(projectId, targetVisibility, managerNric);
               managerMenu.displayToggleVisibilityResult(success, targetVisibility);
          } else {
@@ -363,9 +354,9 @@ public class HDBManagerController extends UserController implements UserControll
             boolean isValidId = enquiries.stream().anyMatch(e -> e.getEnquiryId() == enquiryId);
             if (!isValidId) { CommonView.displayError("Invalid Enquiry ID selected from the list."); return; }
 
-          String replyText = officerView.getReplyInput(); // Reuse officer view prompt
-          boolean success = enquiryService.replyToEnquiry(enquiryId, managerNric, replyText); // Service checks permission again
-          officerView.displayReplyResult(success); // Reuse officer view result display
+          String replyText = officerView.getReplyInput();
+          boolean success = enquiryService.replyToEnquiry(enquiryId, managerNric, replyText); 
+          officerView.displayReplyResult(success); 
      }
 
     // --- Reporting ---

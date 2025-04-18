@@ -5,12 +5,12 @@ import utils.TextFormatUtil;
 import models.*;
 import enums.FlatType;
 import enums.BTOApplicationStatus;
-import stores.DataStore; // Used for simple lookups in display methods
+import stores.DataStore; 
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator; // Import comparator for sorting
+import java.util.Comparator; 
 
 /**
  * Handles the display and input for the Applicant user interface.
@@ -53,7 +53,6 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
           if (!flatTypeStr.isEmpty()) {
               FlatType validatedType = FlatType.fromDisplayName(flatTypeStr); // Uses helper to check validity
               if (validatedType != null) {
-                  // Store the VALIDATED display name
                   filters.put("flatType", validatedType.getDisplayName());
               } else {
                   if (!flatTypeInput.isEmpty()) {
@@ -190,7 +189,7 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
          }
      }
 
-     // --- Enquiry Management ---
+     // Enquiry Management
       public int displayEnquiryMenu() {
          CommonView.displayNavigationBar("Manage Enquiries");
          System.out.println("1. Submit New Enquiry");
@@ -278,7 +277,7 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
          else CommonView.displayError("Failed to delete enquiry.");
      }
 
-     // --- Password Change Methods ---
+     // Password Change Methods
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }

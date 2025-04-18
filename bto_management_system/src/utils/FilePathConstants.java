@@ -1,7 +1,7 @@
 package utils;
 
 public class FilePathConstants {
-    private static final String DATA_DIR = "data/"; // Base directory for data files
+    private static final String DATA_DIR = "data/"; // for data files
 
     public static final String USERS_FILE = DATA_DIR + "users.csv";
     public static final String PROJECTS_FILE = DATA_DIR + "projects.csv";
@@ -13,7 +13,7 @@ public class FilePathConstants {
     // Prevent instantiation
     private FilePathConstants() {}
 
-    // Getters if needed, but direct use might be simpler
+    // Getters 
     public static String getUserFilePath() { return USERS_FILE; }
     public static String getProjectsFilePath() { return PROJECTS_FILE; }
     public static String getApplicationsFilePath() { return APPLICATIONS_FILE; }

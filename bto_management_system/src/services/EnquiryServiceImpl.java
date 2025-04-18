@@ -91,7 +91,6 @@ public class EnquiryServiceImpl implements IEnquiryService {
 
     @Override
     public List<Enquiry> viewProjectEnquiries(int projectId) {
-         // Check if project exists? Optional, stream will just be empty.
         return DataStore.getEnquiries().values().stream()
                 .filter(e -> e.getProjectId() == projectId)
                 .sorted(Comparator.comparing(Enquiry::getSubmissionDate).reversed())
@@ -100,11 +99,11 @@ public class EnquiryServiceImpl implements IEnquiryService {
 
     @Override
     public List<Enquiry> viewAllEnquiries() {
-         // Typically only for Manager
+         // Typically for Manager
         User currentUser = AuthStore.getCurrentUser();
         if (currentUser == null || currentUser.getRole() != UserRole.MANAGER) {
             System.err.println(TextFormatUtil.error("Access denied: Only HDB Managers can view all enquiries."));
-            return new ArrayList<>(); // Return empty list
+            return new ArrayList<>(); 
         }
 
         return new ArrayList<>(DataStore.getEnquiries().values())
@@ -117,7 +116,7 @@ public class EnquiryServiceImpl implements IEnquiryService {
     public boolean replyToEnquiry(int enquiryId, String replierNric, String replyText) {
         Enquiry enquiry = DataStore.getEnquiryById(enquiryId);
         User replier = DataStore.getUserByNric(replierNric);
-        Project project; // Project associated with the enquiry
+        Project project; 
 
         if (enquiry == null || replier == null) {
             System.err.println(TextFormatUtil.error("Reply failed: Enquiry or Replier not found."));
@@ -126,7 +125,7 @@ public class EnquiryServiceImpl implements IEnquiryService {
         project = DataStore.getProjectById(enquiry.getProjectId());
         if (project == null) {
              System.err.println(TextFormatUtil.error("Reply failed: Project associated with enquiry not found."));
-             return false; // Should not happen if data is consistent
+             return false; 
         }
 
          if (replyText == null || replyText.trim().isEmpty()) {
@@ -135,7 +134,7 @@ public class EnquiryServiceImpl implements IEnquiryService {
         }
 
 
-        // Permission Check: Only Officer handling the project or the Manager handling the project (or any Manager?)
+        // Permission Check: Only Officer handling the project or the Manager handling the project
         boolean canReply = false;
         String replierInfo = replier.getName() + " (" + replier.getRole() + ")";
 
@@ -149,8 +148,7 @@ public class EnquiryServiceImpl implements IEnquiryService {
              if (project.getAssignedHDBManagerNric().equals(replierNric)) {
                  canReply = true;
              }
-             // Brief allows manager to view ALL, but reply only to handled? Let's stick to handled for replies.
-             // If manager should reply to any, remove the check above for manager role.
+
         }
 
         if (!canReply) {
@@ -160,8 +158,8 @@ public class EnquiryServiceImpl implements IEnquiryService {
 
 
         // Add reply and update status
-        enquiry.addReply(replierInfo, replyText.trim()); // Model updates status to ANSWERED
-        DataStore.saveAllData(); // Persist
+        enquiry.addReply(replierInfo, replyText.trim()); 
+        DataStore.saveAllData(); 
         return true;
     }
 
@@ -181,17 +179,14 @@ public class EnquiryServiceImpl implements IEnquiryService {
              return false;
          }
 
-         // Permission Check: Only officer/manager handling the project? Or submitter?
-         // Let's assume Officer/Manager handling it can close.
+
          boolean canClose = false;
          if (closer.getRole() == UserRole.OFFICER && project.getAssignedHDBOfficerNrics().contains(closerNric)) {
              canClose = true;
          } else if (closer.getRole() == UserRole.MANAGER && project.getAssignedHDBManagerNric().equals(closerNric)) {
               canClose = true;
          }
-          // else if (enquiry.getSubmitterNric().equals(closerNric)) { // Allow submitter to close?
-          //    canClose = true;
-          // }
+
 
 
          if (!canClose) {
@@ -201,11 +196,11 @@ public class EnquiryServiceImpl implements IEnquiryService {
 
          if (enquiry.getStatus() == EnquiryStatus.CLOSED) {
              System.err.println(TextFormatUtil.warning("Enquiry already closed."));
-             return false; // Not an error, but action not needed
+             return false; 
          }
 
-        enquiry.closeEnquiry(); // Model updates status
-        DataStore.saveAllData(); // Persist
+        enquiry.closeEnquiry(); 
+        DataStore.saveAllData(); 
         return true;
     }
 }

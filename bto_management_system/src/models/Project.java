@@ -1,6 +1,6 @@
-package models; // Updated package
+package models; 
 
-import enums.FlatType; // Updated import
+import enums.FlatType; 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -62,7 +62,7 @@ public class Project implements Serializable {
          }
     }
 
-    // --- Getters ---
+    // Getters 
     public int getProjectId() { return projectId; }
     public String getProjectName() { return projectName; }
     public String getNeighborhood() { return neighborhood; }
@@ -78,7 +78,7 @@ public class Project implements Serializable {
     public int getCurrentOfficerCount() { return assignedHDBOfficerNrics.size(); }
      public int getRemainingOfficerSlots() { return maxOfficerSlots - getCurrentOfficerCount(); }
 
-    // --- Setters ---
+    // Setters
     public void setProjectName(String projectName) { this.projectName = projectName; }
     public void setNeighborhood(String neighborhood) { this.neighborhood = neighborhood; }
     public void setTotalUnits(Map<FlatType, Integer> totalUnits) {
@@ -93,7 +93,6 @@ public class Project implements Serializable {
     public void setMaxOfficerSlots(int maxOfficerSlots) { this.maxOfficerSlots = maxOfficerSlots; }
     public void setVisibility(boolean visibility) { this.visibility = visibility; }
 
-    // --- Business Logic Methods ---
     public boolean addOfficer(String officerNric) {
         if (assignedHDBOfficerNrics.size() < maxOfficerSlots && !assignedHDBOfficerNrics.contains(officerNric)) {
             assignedHDBOfficerNrics.add(officerNric);

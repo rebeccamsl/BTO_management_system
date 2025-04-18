@@ -1,7 +1,7 @@
-package models; // Updated package
+package models; 
 
-import enums.BTOApplicationStatus; // Updated import
-import enums.FlatType; // Updated import
+import enums.BTOApplicationStatus; 
+import enums.FlatType; 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;

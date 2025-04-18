@@ -1,11 +1,10 @@
 package stores;
 
-import models.User; // Updated import
+import models.User; 
 
 public class AuthStore {
     private static User currentUser = null;
 
-    // Prevent instantiation
     private AuthStore() {}
 
     public static void setCurrentUser(User user) {

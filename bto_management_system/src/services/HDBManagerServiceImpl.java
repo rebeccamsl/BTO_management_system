@@ -11,12 +11,12 @@ import utils.TextFormatUtil;
 
 public class HDBManagerServiceImpl implements IHDBManagerService {
 
-    private final IProjectService projectService; // Inject dependency
-    private final IFlatBookingService flatBookingService; // Inject dependency
+    private final IProjectService projectService; 
+    private final IFlatBookingService flatBookingService; 
 
     public HDBManagerServiceImpl() {
-        this.projectService = new ProjectServiceImpl(); // Simple instantiation
-        this.flatBookingService = new FlatBookingServiceImpl(); // Simple instantiation
+        this.projectService = new ProjectServiceImpl(); 
+        this.flatBookingService = new FlatBookingServiceImpl(); 
     }
 
     @Override
@@ -38,25 +38,22 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
              System.err.println(TextFormatUtil.error("Approve registration failed: Registration is not pending (Status: " + registration.getStatus() + ")."));
              return false;
         }
-        // Check eligibility again just before approval (in case officer applied meanwhile?) - Robustness
+        // Check eligibility again before approval
          if (!new HDBOfficerServiceImpl().checkOfficerEligibilityForRegistration(registration.getOfficerNric(), registration.getProjectId())) {
               System.err.println(TextFormatUtil.error("Approve registration failed: Officer is no longer eligible."));
-             // Optionally reject the registration automatically here?
-             // registration.reject(); DataStore.saveAllData();
              return false;
          }
 
         // Check slots and add officer to project
         if (projectService.addOfficerToProject(registration.getProjectId(), registration.getOfficerNric())) {
             // If officer added successfully to project, approve the registration
-            registration.approve(); // Updates status and decision date
-            DataStore.saveAllData(); // Persist changes
+            registration.approve(); 
+            DataStore.saveAllData(); 
             return true;
         } else {
             // addOfficerToProject already prints error if slots full or already assigned
-            // Optionally reject if slots are full?
              System.err.println(TextFormatUtil.error("Approve registration failed: Could not add officer to project (likely no slots available or already assigned)."));
-            // registration.reject(); DataStore.saveAllData(); // Auto-reject?
+             registration.reject(); DataStore.saveAllData(); // Auto-reject
             return false;
         }
     }
@@ -81,8 +78,8 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
              return false;
         }
 
-        registration.reject(); // Updates status and decision date
-        DataStore.saveAllData(); // Persist
+        registration.reject(); 
+        DataStore.saveAllData(); 
         return true;
     }
 
@@ -97,7 +94,7 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
              System.err.println(TextFormatUtil.error("Approve application failed: Invalid application, project, or manager."));
              return false;
          }
-        // Only manager in charge of the project can approve? Let's assume yes.
+        // Only manager in charge of the project can approve
          if (!project.getAssignedHDBManagerNric().equals(managerNric)) {
              System.err.println(TextFormatUtil.error("Approve application failed: Only the manager in charge (" + project.getAssignedHDBManagerNric() + ") can approve applications for project " + project.getProjectId() + "."));
              return false;
@@ -112,8 +109,7 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
         FlatType appliedType = application.getAppliedFlatType();
         if (project.getAvailableUnits(appliedType) <= 0) {
              System.err.println(TextFormatUtil.error("Approve application failed: No available units for " + appliedType.getDisplayName() + " in project " + project.getProjectId() + "."));
-             // Optionally auto-reject?
-             // application.setStatus(BTOApplicationStatus.UNSUCCESSFUL); DataStore.saveAllData();
+             application.setStatus(BTOApplicationStatus.UNSUCCESSFUL); DataStore.saveAllData();
              return false;
         }
 
@@ -121,7 +117,7 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
         application.setStatus(BTOApplicationStatus.SUCCESSFUL);
         // NOTE: We DO NOT decrement units here. Units are decremented upon *booking* by the officer.
         // Approval just means they are invited to book.
-        DataStore.saveAllData(); // Persist status change
+        DataStore.saveAllData(); 
         return true;
     }
 
@@ -194,7 +190,7 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
              ((Applicant) applicant).clearCurrentApplication();
          }
 
-        DataStore.saveAllData(); // Persist changes
+        DataStore.saveAllData(); 
         return true;
     }
 
@@ -204,7 +200,7 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
         Project project = (application != null) ? DataStore.getProjectById(application.getProjectId()) : null;
         User manager = DataStore.getUserByNric(managerNric);
 
-         // Validation (similar to approve)
+         // Validation 
          if (application == null || project == null || manager == null || manager.getRole() != UserRole.MANAGER) {
              System.err.println(TextFormatUtil.error("Reject withdrawal failed: Invalid application, project, or manager."));
              return false;
@@ -218,9 +214,9 @@ public class HDBManagerServiceImpl implements IHDBManagerService {
              return false;
          }
 
-        // Reject withdrawal (clears request flag, status remains unchanged)
+        // Reject withdrawal 
         application.rejectWithdrawal();
-        DataStore.saveAllData(); // Persist change
+        DataStore.saveAllData();
         return true;
     }
 }

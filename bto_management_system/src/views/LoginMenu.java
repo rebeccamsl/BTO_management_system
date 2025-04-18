@@ -15,8 +15,7 @@ public class LoginMenu {
     public String[] displayLoginPrompt() {
         System.out.println("\n--- User Login ---");
         String nric = InputUtil.readString("Enter NRIC: ");
-        // WARNING: Reading password as plain text. Use Console class for masking in real apps.
-        String password = InputUtil.readString("Enter Password: "); // Assuming default is 'password' as per brief
+        String password = InputUtil.readString("Enter Password: "); 
         return new String[]{nric, password};
     }
 
@@ -58,7 +57,6 @@ public class LoginMenu {
       * @return The entered old password.
       */
      public String readOldPassword() {
-         // WARNING: Reading password as plain text.
          return InputUtil.readString("Enter Old Password: ");
      }
 
@@ -67,7 +65,6 @@ public class LoginMenu {
        * @return The entered new password.
        */
       public String readNewPassword() {
-         // WARNING: Reading password as plain text.
          return InputUtil.readString("Enter New Password: ");
      }
 
@@ -76,7 +73,6 @@ public class LoginMenu {
        * @return The entered confirmation password.
        */
       public String readConfirmNewPassword() {
-         // WARNING: Reading password as plain text.
          return InputUtil.readString("Confirm New Password: ");
      }
 

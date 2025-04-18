@@ -1,7 +1,7 @@
-package models; // Updated package
+package models; 
 
-import enums.MaritalStatus; // Updated import
-import enums.UserRole; // Updated import
+import enums.MaritalStatus; 
+import enums.UserRole; 
 import java.io.Serializable;
 
 public abstract class User implements Serializable {

@@ -28,7 +28,7 @@ public class HDBOfficerRegDataManager extends AbstractCsvDataManager<Integer, HD
         String officerNric = safeParseString(values[1]);
         int projectId = safeParseInt(values[2], -1);
 
-        // --- Robust Enum Parsing ---
+        //Enum Parsing 
         RequestStatus status = null;
         String statusStr = safeParseString(values[3]);
         if (!statusStr.isEmpty()) {
@@ -42,7 +42,7 @@ public class HDBOfficerRegDataManager extends AbstractCsvDataManager<Integer, HD
             System.err.println(TextFormatUtil.warning("Skipping officer registration row: Status is empty for RegID " + values[0]));
             return null; // Skip if status is mandatory and empty
         }
-         // --- End Robust Enum Parsing ---
+
 
 
         Date requestDate = DateUtils.parseDate(safeParseString(values[4]));
@@ -64,7 +64,7 @@ public class HDBOfficerRegDataManager extends AbstractCsvDataManager<Integer, HD
                 String.valueOf(reg.getRegistrationId()),
                 reg.getOfficerNric(),
                 String.valueOf(reg.getProjectId()),
-                reg.getStatus().name(), // Store enum name
+                reg.getStatus().name(), 
                 DateUtils.formatDate(reg.getRequestDate()),
                 DateUtils.formatDate(reg.getDecisionDate()) // Returns "" if date is null
         );

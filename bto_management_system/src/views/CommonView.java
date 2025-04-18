@@ -2,7 +2,7 @@ package views;
 
 import utils.InputUtil;
 import utils.TextFormatUtil;
-import java.util.regex.Pattern; // Import Pattern for removing ANSI codes
+import java.util.regex.Pattern;
 
 /**
  * Provides common utility methods for displaying UI components
@@ -10,13 +10,12 @@ import java.util.regex.Pattern; // Import Pattern for removing ANSI codes
  */
 public class CommonView {
 
-    // Pattern to remove ANSI escape codes for length calculation
+    // remove ANSI escape codes for length calculation
     private static final Pattern ANSI_ESCAPE_PATTERN = Pattern.compile("\\x1B\\[[0-?]*[ -/]*[@-~]");
 
-    // Private constructor to prevent instantiation
+    //prevent instantiation
     private CommonView() {}
 
-    // ... displayWelcomeMessage, displayGoodbyeMessage ... (no changes)
      public static void displayWelcomeMessage() {
         String border = "\u250F" + "\u2501".repeat(68) + "\u2513";
         String middle = "\u2503" + " ".repeat(15) + "Welcome to the BTO Management System!" + " ".repeat(16) + "\u2503";
@@ -85,7 +84,6 @@ public class CommonView {
     }
 
 
-    // ... displayMessage, displaySuccess, displayError, etc. ... (no changes)
     public static void displayMessage(String message) {
         System.out.println(message);
     }
@@ -120,7 +118,6 @@ public class CommonView {
      private static int calculateVisibleWidth(String formatString, String... headers) {
          String formattedHeader = String.format(formatString, (Object[]) headers);
          String visibleHeader = removeAnsiCodes(formattedHeader);
-         // This is still approximate as printf alignment affects final visual width
          return Math.max(visibleHeader.length(), 40);
      }
 }

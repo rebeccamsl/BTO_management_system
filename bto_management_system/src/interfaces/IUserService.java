@@ -20,6 +20,5 @@ public interface IUserService {
      */
     User getUserDetails(String nric);
 
-    // Method stub for potential future profile updates
-    // boolean updateUserProfile(String nric, int newAge, MaritalStatus newStatus);
+
 }

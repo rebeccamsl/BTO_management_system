@@ -2,7 +2,7 @@ package services;
 
 import interfaces.IHDBOfficerService;
 
-import interfaces.IProjectService; // Needed for checks
+import interfaces.IProjectService; 
 import models.*;
 import enums.*;
 import stores.DataStore;
@@ -16,10 +16,10 @@ import java.util.stream.Collectors;
 
 public class HDBOfficerServiceImpl implements IHDBOfficerService {
 
-    private final IProjectService projectService; // Inject dependency
+    private final IProjectService projectService; 
 
     public HDBOfficerServiceImpl() {
-        this.projectService = new ProjectServiceImpl(); // Simple instantiation
+        this.projectService = new ProjectServiceImpl(); 
     }
 
     @Override
@@ -34,7 +34,6 @@ public class HDBOfficerServiceImpl implements IHDBOfficerService {
 
         // Check eligibility
         if (!checkOfficerEligibilityForRegistration(officerNric, projectId)) {
-            // Eligibility method prints specific error
             return null;
         }
 
@@ -94,7 +93,7 @@ public class HDBOfficerServiceImpl implements IHDBOfficerService {
 
         if (targetOpen == null || targetClose == null) {
              System.err.println(TextFormatUtil.error("Eligibility check failed: Target project application dates are invalid."));
-             return false; // Cannot check period if dates are missing
+             return false;
         }
 
         // Find projects the officer is ALREADY APPROVED for
@@ -114,7 +113,7 @@ public class HDBOfficerServiceImpl implements IHDBOfficerService {
                      // Check for period overlap: (StartA <= EndB) and (EndA >= StartB)
                      if (!targetOpen.after(handledClose) && !targetClose.before(handledOpen)) {
                           System.err.println(TextFormatUtil.error("Eligibility check failed: Already handling another project (" + handledProject.getProjectName() + ") during the application period of the target project."));
-                          return false; // Overlap found
+                          return false; 
                      }
                  }
              }
@@ -137,7 +136,7 @@ public class HDBOfficerServiceImpl implements IHDBOfficerService {
              return false;
          }
 
-        return true; // Eligible
+        return true;
     }
 
     @Override

@@ -1,7 +1,7 @@
-package models; // Updated package
+package models; 
 
-import enums.MaritalStatus; // Updated import
-import enums.UserRole; // Updated import
+import enums.MaritalStatus; 
+import enums.UserRole; 
 
 public class HDBManager extends User {
      private static final long serialVersionUID = 1L;

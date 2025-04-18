@@ -26,7 +26,7 @@ public class AuthController {
         while (true) {
              int action = loginMenu.displayInitialAction();
              if (action == 0) {
-                 return false; // User chose to exit
+                 return false; 
              }
 
             String[] credentials = loginMenu.displayLoginPrompt();
@@ -37,13 +37,12 @@ public class AuthController {
 
             if (loggedInUser != null) {
                 loginMenu.displayLoginSuccess(loggedInUser.getName(), loggedInUser.getRole().name());
-                return true; // Login successful
+                return true; 
             } else {
-                // Login failed, authService might have printed details, or we print a generic one
-                loginMenu.displayLoginError("Invalid NRIC or Password."); // Generic error shown to user
-                // Optionally add retry limit logic here
+                loginMenu.displayLoginError("Invalid NRIC or Password."); 
+               
             }
-             // Loop back to ask Login or Exit again after failed attempt
+             
         }
     }
 
@@ -53,8 +52,6 @@ public class AuthController {
     public static void logout() {
         IAuthService authService = new AuthServiceImpl(); // Instantiate locally or use shared instance
         authService.logout();
-        // LoginMenu view can display the logout message if called from there,
-        // or CommonView can be used if logout happens elsewhere.
-        // loginMenu.displayLogoutMessage(); // Redundant if BTOManagementApp handles it
+  
     }
 }
