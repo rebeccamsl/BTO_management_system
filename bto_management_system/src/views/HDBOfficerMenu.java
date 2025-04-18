@@ -9,6 +9,7 @@ import services.FlatBookingServiceImpl; // Only used temporarily for receipt dis
 
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator; // Import Comparator
 
 /**
  * Handles the display and input for the HDB Officer user interface.
@@ -96,11 +97,13 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
          String headerFormat = "%-7s | %-20s | %-10s | %s\n";
          String rowFormat    = "%-7d | %-20s | %-10s | %s\n";
          CommonView.displayTableHeader(headerFormat, "Reg ID", "Project Name", "Status", "Request Date");
+         // Sort by Request Date descending for display
+         registrations.sort(Comparator.comparing(HDBOfficerRegistration::getRequestDate).reversed());
         for (HDBOfficerRegistration reg : registrations) {
             Project p = DataStore.getProjectById(reg.getProjectId());
             CommonView.displayTableRow(rowFormat,
                  reg.getRegistrationId(),
-                 (p != null ? p.getProjectName() : "N/A"),
+                 (p != null ? p.getProjectName() : "N/A (Project ID: " + reg.getProjectId() + ")"),
                  reg.getStatus(),
                  utils.DateUtils.formatDate(reg.getRequestDate()));
         }
@@ -172,7 +175,10 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
        * @return The selected FlatType, or null if cancelled.
        */
       public FlatType getFlatTypeForBooking(List<FlatType> availableTypes) {
-           CommonView.displayInfo("\n" + TextFormatUtil.bold("Officer:") +" Assisting applicant with flat selection.");
+           // *** FIX: Use displayMessage or TextFormatUtil.info ***
+           CommonView.displayMessage("\n" + TextFormatUtil.bold("Officer:") +" Assisting applicant with flat selection.");
+           // *** End Fix ***
+
            // Reuse applicant selection logic
            return new ApplicantMenu().getFlatTypeSelection(availableTypes);
       }
@@ -197,7 +203,6 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
                // Display receipt immediately after successful booking
                System.out.println("\nGenerating Receipt...");
                // Generate and print receipt (using service temporarily here for simplicity)
-               // In a cleaner design, controller would call service then pass receipt string here.
                System.out.println(new FlatBookingServiceImpl().generateBookingReceipt(booking.getBookingId()));
           } else {
               CommonView.displayError("Failed to book flat.");
@@ -220,8 +225,7 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
            if (receipt == null || receipt.startsWith(TextFormatUtil.error(""))) {
                CommonView.displayError(receipt != null ? receipt : "Receipt could not be generated.");
            } else {
-               // Add extra newline before receipt for spacing
-               System.out.println(receipt); // Receipt string already has newlines and formatting
+               System.out.println(receipt); // Receipt string has its own formatting
            }
       }
 
