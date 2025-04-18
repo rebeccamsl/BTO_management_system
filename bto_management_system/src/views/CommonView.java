@@ -1,7 +1,8 @@
 package views;
 
-import utils.InputUtil; // Needed for pressEnterToContinue
+import utils.InputUtil;
 import utils.TextFormatUtil;
+import java.util.regex.Pattern; // Import Pattern for removing ANSI codes
 
 /**
  * Provides common utility methods for displaying UI components
@@ -9,16 +10,14 @@ import utils.TextFormatUtil;
  */
 public class CommonView {
 
-    // ANSI Reset code length - used for approximate length calculations with formatting
-    private static final int RESET_CODE_LENGTH = TextFormatUtil.RESET.length();
+    // Pattern to remove ANSI escape codes for length calculation
+    private static final Pattern ANSI_ESCAPE_PATTERN = Pattern.compile("\\x1B\\[[0-?]*[ -/]*[@-~]");
 
-    // Prevent instantiation of this utility class
+    // Private constructor to prevent instantiation
     private CommonView() {}
 
-    /**
-     * Displays the application's welcome message.
-     */
-    public static void displayWelcomeMessage() {
+    // ... displayWelcomeMessage, displayGoodbyeMessage ... (no changes)
+     public static void displayWelcomeMessage() {
         String border = "\u250F" + "\u2501".repeat(68) + "\u2513";
         String middle = "\u2503" + " ".repeat(15) + "Welcome to the BTO Management System!" + " ".repeat(16) + "\u2503";
         String bottom = "\u2517" + "\u2501".repeat(68) + "\u251B";
@@ -26,46 +25,50 @@ public class CommonView {
         System.out.println(middle);
         System.out.println(bottom);
     }
-
-     /**
-      * Displays the application's goodbye message.
-      */
      public static void displayGoodbyeMessage() {
         System.out.println("\nThank you for using the BTO Management System. Goodbye!");
     }
 
+
      /**
-      * Displays a formatted navigation bar or section header. Handles long titles by truncating.
-      * @param title The title to display in the header.
+      * Displays a formatted navigation bar or section header.
+      * Calculates padding based on visible length, ignoring ANSI codes.
+      * @param title The title string, potentially containing ANSI formatting.
       */
      public static void displayNavigationBar(String title) {
-         int totalWidth = 70; // Adjust width as needed
+         int totalWidth = 70; // Target width
          String borderLine = "\u2501".repeat(Math.max(0, totalWidth - 2));
          String topBorder = "\u250F" + borderLine + "\u2513";
          String bottomBorder = "\u2517" + borderLine + "\u251B";
 
-         String formattedTitle = " " + TextFormatUtil.bold(title) + " ";
-         // Approximate length calculation
-         int approxTitleDisplayLength = title.length() + 2;
+         // Title with desired formatting (e.g., bold) but without extra spaces yet
+         String formattedTitleContent = TextFormatUtil.bold(title);
+         // Calculate VISIBLE length by removing ANSI codes
+         String visibleTitle = removeAnsiCodes(formattedTitleContent);
+         int visibleTitleLength = visibleTitle.length();
+
+         // Add spaces around the visible title for centering calculation
+         int titleLengthWithSpaces = visibleTitleLength + 2; // +2 for spaces " Title "
 
          String contentLine;
-         if (approxTitleDisplayLength > totalWidth - 2) {
-             int maxTitleLength = totalWidth - 7;
-             String truncatedTitle = title.substring(0, Math.max(0, maxTitleLength)) + "...";
-             formattedTitle = " " + TextFormatUtil.bold(truncatedTitle) + " ";
-             // Use String.format for padding to ensure correct length
-             contentLine = String.format("\u2503%-"+ (totalWidth - 2) +"s\u2503", formattedTitle);
+         // Check if visible title (+ spaces) exceeds available width
+         if (titleLengthWithSpaces > totalWidth - 2) {
+             // Truncate the *original* title if needed, then reformat
+             int maxVisibleLength = totalWidth - 7; // Space for bars, spaces, "..."
+             String truncatedVisibleTitle = title.substring(0, Math.min(title.length(), maxVisibleLength)) + "...";
+             formattedTitleContent = " " + TextFormatUtil.bold(truncatedVisibleTitle) + " ";
+             // Format the line, assuming truncation handles length
+             contentLine = String.format("\u2503%-"+ (totalWidth - 2) +"s\u2503", formattedTitleContent); // Left align padded
 
          } else {
-             int titleDisplayLength = title.length() + 2;
-             int sidePadding = Math.max(0, (totalWidth - titleDisplayLength - 2) / 2);
+             // Center the title based on visible length
+             int sidePadding = Math.max(0, (totalWidth - titleLengthWithSpaces - 2) / 2);
              String leftPad = " ".repeat(sidePadding);
-             int rightPaddingLength = Math.max(0, totalWidth - titleDisplayLength - sidePadding - 2);
+             // Calculate right padding needed
+             int rightPaddingLength = Math.max(0, totalWidth - sidePadding - titleLengthWithSpaces - 2);
              String rightPad = " ".repeat(rightPaddingLength);
-             contentLine = "\u2503" + leftPad + formattedTitle + rightPad + "\u2503";
-             // Adjust padding if bolding changed effective length (can be tricky)
-             // A simpler fixed padding approach might be more reliable if ANSI codes cause issues
-             // Example: contentLine = String.format("\u2503 %-" + (totalWidth - 4) + "s \u2503", TextFormatUtil.bold(title));
+             // Construct the line with actual formatted title
+             contentLine = "\u2503" + leftPad + " " + formattedTitleContent + " " + rightPad + "\u2503";
          }
 
          System.out.println("\n" + topBorder);
@@ -73,85 +76,51 @@ public class CommonView {
          System.out.println(bottomBorder);
     }
 
+    /** Helper method to remove ANSI escape codes for length calculation */
+    private static String removeAnsiCodes(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return ANSI_ESCAPE_PATTERN.matcher(text).replaceAll("");
+    }
 
-    /**
-     * Displays a standard informational message.
-     * @param message The message string.
-     */
+
+    // ... displayMessage, displaySuccess, displayError, etc. ... (no changes)
     public static void displayMessage(String message) {
         System.out.println(message);
     }
-
-    /**
-     * Displays a success message, typically formatted in green.
-     * @param message The success message string.
-     */
     public static void displaySuccess(String message) {
         System.out.println(TextFormatUtil.success(message));
     }
-
-    /**
-     * Displays an error message, typically formatted in red and sent to System.err.
-     * @param message The error message string.
-     */
     public static void displayError(String message) {
         System.err.println(TextFormatUtil.error(message));
     }
-
-    /**
-     * Displays a warning message, typically formatted in yellow.
-     * @param message The warning message string.
-     */
     public static void displayWarning(String message) {
         System.out.println(TextFormatUtil.warning(message));
     }
-
-    /**
-     * Displays a generic "Invalid choice" error message.
-     */
     public static void displayInvalidChoice() {
         displayError("Invalid choice. Please select a valid option.");
     }
-
-    /**
-     * Pauses execution and waits for the user to press Enter.
-     */
     public static void pressEnterToContinue() {
-        // *** FIX: Use an existing InputUtil method to wait for Enter ***
         InputUtil.readStringAllowEmpty("Press Enter to continue...");
-        // *** End Fix ***
     }
-
-     /**
-      * Displays a message indicating a feature is not implemented.
-      */
      public static void displayNotImplemented() {
          displayWarning("Sorry, this feature is not yet implemented.");
      }
-
-     /**
-      * Displays a formatted table header. Requires manual format string.
-      * @param formatString The printf format string for the header.
-      * @param headers Column headers.
-      */
      public static void displayTableHeader(String formatString, String... headers) {
          System.out.println();
          System.out.printf(formatString, (Object[]) headers);
-         int width = String.format(formatString, (Object[]) headers).length();
-         // Crude way to estimate length without ANSI codes for separator
-         int estimatedContentWidth = 0;
-         for(String h : headers) estimatedContentWidth += h.length();
-         width = Math.max(width - (headers.length * (TextFormatUtil.BOLD.length() + TextFormatUtil.RESET.length())), estimatedContentWidth + headers.length*3);
-
+         int width = calculateVisibleWidth(formatString, headers);
          System.out.println("-".repeat(Math.max(width, 40)));
      }
-
-     /**
-      * Displays a formatted table row using printf.
-      * @param formatString The printf format string for the row.
-      * @param columns Data for each column in the row.
-      */
      public static void displayTableRow(String formatString, Object... columns) {
          System.out.printf(formatString, columns);
+     }
+     // Helper to estimate visible width for table separator
+     private static int calculateVisibleWidth(String formatString, String... headers) {
+         String formattedHeader = String.format(formatString, (Object[]) headers);
+         String visibleHeader = removeAnsiCodes(formattedHeader);
+         // This is still approximate as printf alignment affects final visual width
+         return Math.max(visibleHeader.length(), 40);
      }
 }

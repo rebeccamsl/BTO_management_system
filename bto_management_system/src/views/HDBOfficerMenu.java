@@ -17,6 +17,7 @@ import java.util.Comparator; // Import Comparator
  */
 public class HDBOfficerMenu implements controllers.UserController.PasswordChangeView {
 
+     // *** FIX: Restore the main menu display method ***
      /**
       * Displays the main menu for HDB Officers and gets their choice.
       * @param handlingProjectName The name of the project currently handled by the officer, or null.
@@ -41,49 +42,75 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
         System.out.println("--- Account ---");
         System.out.println("10. Change Password");
         System.out.println("0. Logout");
+        // Read input within the valid range of menu options
         return InputUtil.readIntInRange("Enter your choice: ", 0, 10);
     }
+    // *** End Fix ***
 
-    // --- Project Display ---
-     /**
-      * Displays detailed information about a specific project.
-      * @param project The Project object to display.
-      */
-     public void displayProjectDetails(Project project) {
-         if (project == null) {
-             CommonView.displayWarning("No project details to display (Project might not exist or is not assigned).");
+
+    /**
+     * Displays a list of projects specifically for Officer Registration selection.
+     * @param projects List of projects open for registration.
+     */
+     public void displayProjectsForRegistration(List<Project> projects) {
+         System.out.println("\n--- Projects Open for Officer Registration ---");
+         if (projects == null || projects.isEmpty()) {
+             System.out.println("No projects are currently open for officer registration.");
              return;
          }
-         System.out.println("\n--- Project Details ("+ TextFormatUtil.bold(project.getProjectName()) +") ---");
-         CommonView.displayMessage(String.format("%-18s: %d", "Project ID", project.getProjectId()));
-         CommonView.displayMessage(String.format("%-18s: %s", "Project Name", project.getProjectName()));
-         CommonView.displayMessage(String.format("%-18s: %s", "Neighborhood", project.getNeighborhood()));
-         CommonView.displayMessage(String.format("%-18s: %s", "Visibility", (project.isVisible() ? TextFormatUtil.success("ON") : TextFormatUtil.warning("OFF"))));
-         CommonView.displayMessage(String.format("%-18s: %s", "Application Open", utils.DateUtils.formatDate(project.getApplicationOpeningDate())));
-         CommonView.displayMessage(String.format("%-18s: %s", "Application Close", utils.DateUtils.formatDate(project.getApplicationClosingDate())));
-         CommonView.displayMessage(String.format("%-18s: %s", "Manager In Charge", project.getAssignedHDBManagerNric()));
-         CommonView.displayMessage(String.format("%-18s: %d / %d", "Officer Slots", project.getCurrentOfficerCount(), project.getMaxOfficerSlots()));
-         CommonView.displayMessage(String.format("%-18s: %s", "Assigned Officers", (project.getAssignedHDBOfficerNrics().isEmpty() ? "None" : String.join(", ", project.getAssignedHDBOfficerNrics()))));
-
-         System.out.println("\n--- Unit Availability (Available / Total) ---");
-         String headerFormat = "%-10s : %-10s\n";
-         String rowFormat    = "%-10s : %d / %d\n";
-         System.out.printf(headerFormat, "Flat Type", "Avail/Total");
-         System.out.println("-".repeat(25));
-         boolean unitsDisplayed = false;
-         for (FlatType type : FlatType.values()) {
-             int total = project.getTotalUnits().getOrDefault(type, 0);
-             int available = project.getAvailableUnits().getOrDefault(type, 0);
-              if (total > 0) {
-                  System.out.printf(rowFormat, type.getDisplayName(), available, total);
-                  unitsDisplayed = true;
-              }
-         }
-          if (!unitsDisplayed) { System.out.println("No units defined for this project."); }
-          System.out.println("-------------------------");
+         String headerFormat = "%-5s | %-25s | %-15s | %-10s | %-10s\n";
+         String rowFormat    = "%-5d | %-25s | %-15s | %-10s | %-10s\n";
+         CommonView.displayTableHeader(headerFormat, "ID", "Project Name", "Neighborhood", "Open Date", "Close Date");
+         // Sort projects by ID for consistent display before showing
+         projects.sort(Comparator.comparingInt(Project::getProjectId));
+         for (Project p : projects) {
+             CommonView.displayTableRow(rowFormat,
+                    p.getProjectId(),
+                    p.getProjectName(),
+                    p.getNeighborhood(),
+                    utils.DateUtils.formatDate(p.getApplicationOpeningDate()),
+                    utils.DateUtils.formatDate(p.getApplicationClosingDate()));
+        }
      }
 
-     // --- Registration Display ---
+    /**
+     * Displays detailed information about a specific project.
+     * @param project The Project object to display.
+     */
+    public void displayProjectDetails(Project project) {
+        if (project == null) {
+            CommonView.displayWarning("No project details to display (You might not be handling a project or it doesn't exist).");
+            return;
+        }
+        System.out.println("\n--- Project Details ("+ TextFormatUtil.bold(project.getProjectName()) +") ---");
+        CommonView.displayMessage(String.format("%-18s: %d", "Project ID", project.getProjectId()));
+        CommonView.displayMessage(String.format("%-18s: %s", "Project Name", project.getProjectName()));
+        CommonView.displayMessage(String.format("%-18s: %s", "Neighborhood", project.getNeighborhood()));
+        CommonView.displayMessage(String.format("%-18s: %s", "Visibility", (project.isVisible() ? TextFormatUtil.success("ON") : TextFormatUtil.warning("OFF"))));
+        CommonView.displayMessage(String.format("%-18s: %s", "Application Open", utils.DateUtils.formatDate(project.getApplicationOpeningDate())));
+        CommonView.displayMessage(String.format("%-18s: %s", "Application Close", utils.DateUtils.formatDate(project.getApplicationClosingDate())));
+        CommonView.displayMessage(String.format("%-18s: %s", "Manager In Charge", project.getAssignedHDBManagerNric()));
+        CommonView.displayMessage(String.format("%-18s: %d / %d", "Officer Slots", project.getCurrentOfficerCount(), project.getMaxOfficerSlots()));
+        CommonView.displayMessage(String.format("%-18s: %s", "Assigned Officers", (project.getAssignedHDBOfficerNrics().isEmpty() ? "None" : String.join(", ", project.getAssignedHDBOfficerNrics()))));
+
+        System.out.println("\n--- Unit Availability (Available / Total) ---");
+        String headerFormat = "%-10s : %-10s\n";
+        String rowFormat    = "%-10s : %d / %d\n";
+        System.out.printf(headerFormat, "Flat Type", "Avail/Total");
+        System.out.println("-".repeat(25));
+        boolean unitsDisplayed = false;
+        for (FlatType type : List.of(FlatType.TWO_ROOM, FlatType.THREE_ROOM)) {
+            int total = project.getTotalUnits().getOrDefault(type, 0);
+            int available = project.getAvailableUnits().getOrDefault(type, 0);
+             if (total > 0) {
+                 System.out.printf(rowFormat, type.getDisplayName(), available, total);
+                 unitsDisplayed = true;
+             }
+        }
+         if (!unitsDisplayed) { System.out.println("No units defined for this project."); }
+         System.out.println("-------------------------");
+    }
+
      /**
       * Displays a list of the officer's registration requests.
       * @param registrations List of HDBOfficerRegistration objects.
@@ -97,7 +124,6 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
          String headerFormat = "%-7s | %-20s | %-10s | %s\n";
          String rowFormat    = "%-7d | %-20s | %-10s | %s\n";
          CommonView.displayTableHeader(headerFormat, "Reg ID", "Project Name", "Status", "Request Date");
-         // Sort by Request Date descending for display
          registrations.sort(Comparator.comparing(HDBOfficerRegistration::getRequestDate).reversed());
         for (HDBOfficerRegistration reg : registrations) {
             Project p = DataStore.getProjectById(reg.getProjectId());
@@ -119,117 +145,59 @@ public class HDBOfficerMenu implements controllers.UserController.PasswordChange
          else CommonView.displayError("Failed to " + action + " registration request.");
      }
 
-     // --- Enquiry Management (Officer View) ---
-     /**
-      * Displays enquiries for the project the officer is handling.
-      * @param enquiries List of Enquiry objects.
-      */
+     // --- Enquiry Management ---
      public void displayProjectEnquiryList(List<Enquiry> enquiries) {
-        // Re-use ApplicantMenu display logic, provide appropriate title
         new ApplicantMenu().displayEnquiryList("Enquiries for Handling Project", enquiries);
     }
-
-     /**
-      * Prompts for and reads the officer's reply to an enquiry.
-      * @return The reply text.
-      */
      public String getReplyInput() {
          return InputUtil.readString("Enter your reply to the enquiry: ");
      }
-
-      /**
-       * Displays the result of submitting a reply.
-       * @param success true if successful, false otherwise.
-       */
-      public void displayReplyResult(boolean success) {
+     public void displayReplyResult(boolean success) {
          if (success) CommonView.displaySuccess("Reply submitted successfully.");
          else CommonView.displayError("Failed to submit reply.");
      }
 
      // --- Flat Booking Assistance ---
-     /**
-      * Prompts for the NRIC of the applicant being assisted.
-      * @return The applicant's NRIC.
-      */
      public String getApplicantNricForBooking() {
          return InputUtil.readString("Enter Applicant's NRIC to assist with booking: ");
      }
-
-      /**
-       * Displays the details of the application found for booking.
-       * @param application The BTOApplication object (should be status SUCCESSFUL).
-       */
-      public void displayApplicationForBooking(BTOApplication application) {
+     public void displayApplicationForBooking(BTOApplication application) {
            System.out.println("\n--- Application Found for Booking ---");
            if (application == null) {
                CommonView.displayError("No application with status SUCCESSFUL found for the given NRIC.");
                return;
            }
-           // Reuse applicant view to show the details
            new ApplicantMenu().displayApplicationStatus(application);
       }
-
-      /**
-       * Prompts the officer to select/confirm the flat type for booking.
-       * @param availableTypes List of FlatType enums that can be booked (usually just the applied type).
-       * @return The selected FlatType, or null if cancelled.
-       */
       public FlatType getFlatTypeForBooking(List<FlatType> availableTypes) {
-           // *** FIX: Use displayMessage or TextFormatUtil.info ***
            CommonView.displayMessage("\n" + TextFormatUtil.bold("Officer:") +" Assisting applicant with flat selection.");
-           // *** End Fix ***
-
-           // Reuse applicant selection logic
            return new ApplicantMenu().getFlatTypeSelection(availableTypes);
       }
-
-      /**
-       * Prompts the officer to confirm the booking action.
-       * @param type The FlatType being booked.
-       * @return true if confirmed (y), false otherwise (n).
-       */
       public boolean confirmBooking(FlatType type) {
           return InputUtil.readBooleanYN("Confirm booking for one unit of " + type.getDisplayName() + "? (y/n): ");
       }
-
-       /**
-        * Displays the result of the booking attempt. If successful, shows booking ID and optionally the receipt.
-        * @param booking The created FlatBooking object if successful, null otherwise.
-        */
        public void displayBookingResult(FlatBooking booking) {
           if (booking != null) {
                CommonView.displaySuccess("Flat booked successfully!");
                CommonView.displayMessage("Booking ID: " + booking.getBookingId());
-               // Display receipt immediately after successful booking
                System.out.println("\nGenerating Receipt...");
-               // Generate and print receipt (using service temporarily here for simplicity)
                System.out.println(new FlatBookingServiceImpl().generateBookingReceipt(booking.getBookingId()));
           } else {
               CommonView.displayError("Failed to book flat.");
           }
       }
-
-      /**
-       * Prompts the officer for a Booking ID to generate a receipt.
-       * @return The entered Booking ID.
-       */
       public int getBookingIdForReceipt() {
            return InputUtil.readInt("Enter the Booking ID to generate receipt (or 0 to cancel): ");
       }
-
-      /**
-       * Displays the generated booking receipt or an error message.
-       * @param receipt The formatted receipt string, or an error string.
-       */
       public void displayReceipt(String receipt) {
            if (receipt == null || receipt.startsWith(TextFormatUtil.error(""))) {
                CommonView.displayError(receipt != null ? receipt : "Receipt could not be generated.");
            } else {
-               System.out.println(receipt); // Receipt string has its own formatting
+               System.out.println(receipt);
            }
       }
 
-    // --- Password Change Methods (Implementation of PasswordChangeView) ---
+    // --- Password Change Methods ---
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }

@@ -1,6 +1,6 @@
 EnquiryID,SubmitterNRIC,ProjectID,Status,SubmissionDate,LastUpdateDate,Content,Replies(; separated)
-1,S2345678B,1,ANSWERED,2025-03-18,2025-03-19,What are the nearby amenities?,[2025-03-19 10:30:45 EST] Frank Lee (OFFICER): Near Tampines Hub and Century Square.
-2,S1234567A,1,ANSWERED,2025-03-20,2025-04-19,Is pet ownership allowed?,[2025-04-19 09:00:00 EST] Grace Ho (MANAGER): Further clarification: Only one cat OR one approved small dog breed allowed.
-3,T1111111D,2,OPEN,2025-04-12,2025-04-12,When is the estimated completion date?,
-4,S2345678B,1,ANSWERED,2025-03-21,2025-03-22,Can I change my flat type choice after applying?,"[2025-03-22 14:00:00 EST] Grace Ho (MANAGER): Generally no, please confirm your choice before applying."
-5,S1234567A,2,OPEN,2025-04-13,2025-04-13,What primary schools are near GreenHaven@Yishun?,
+1,S2345678B,1,ANSWERED,2025-03-18,2025-03-19,"What are the nearby amenities?",[2025-03-19 10:30:45 EST] Frank Lee (OFFICER): Near Tampines Hub and Century Square.
+2,S1234567A,1,ANSWERED,2025-03-20,2025-04-19,"Is pet ownership allowed?",[2025-04-19 09:00:00 EST] Grace Ho (MANAGER): Further clarification: Only one cat OR one approved small dog breed allowed.
+3,T1111111D,2,OPEN,2025-04-12,2025-04-12,"When is the estimated completion date?",
+4,S2345678B,1,ANSWERED,2025-03-21,2025-03-22,"Can I change my flat type choice after applying?","[2025-03-22 14:00:00 EST] Grace Ho (MANAGER): Generally no
+5,S1234567A,2,OPEN,2025-04-13,2025-04-13,"What primary schools are near GreenHaven@Yishun?",

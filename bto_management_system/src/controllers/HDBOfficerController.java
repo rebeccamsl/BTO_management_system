@@ -15,25 +15,26 @@ import utils.TextFormatUtil;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
+/**
+ * Controller for handling HDB Officer user interactions and logic flow.
+ */
 public class HDBOfficerController extends UserController implements UserController.PasswordChangeView {
 
     private final HDBOfficerMenu officerMenu;
-    private final ApplicantMenu applicantView; // For reusing applicant action views
+    private final ApplicantMenu applicantView;
     private final IHDBOfficerService officerService;
     private final IProjectService projectService;
-    private final IApplicantService applicantService; // For applicant actions
+    private final IApplicantService applicantService;
     private final IEnquiryService enquiryService;
     private final IFlatBookingService bookingService;
-    // userService is inherited
+    // userService inherited
 
-    // Store filters like applicant controller
     private Map<String, String> lastProjectFilters = new HashMap<>();
 
     public HDBOfficerController() {
         super();
         this.officerMenu = new HDBOfficerMenu();
-        this.applicantView = new ApplicantMenu(); // Instantiate to reuse its methods
+        this.applicantView = new ApplicantMenu();
         this.officerService = new HDBOfficerServiceImpl();
         this.projectService = new ProjectServiceImpl();
         this.applicantService = new ApplicantServiceImpl();
@@ -41,84 +42,79 @@ public class HDBOfficerController extends UserController implements UserControll
         this.bookingService = new FlatBookingServiceImpl();
     }
 
+    /**
+     * Main loop for the Officer menu.
+     */
     public void showOfficerMenu() {
         int choice;
         String currentNric = AuthStore.getCurrentUserNric();
         if (currentNric == null) {
-            System.err.println("Error: No logged-in user found for Officer menu.");
+            CommonView.displayError("Critical Error: Cannot show Officer menu - no user logged in.");
             return;
         }
 
         do {
-            // Get handling project name for display
             Project handlingProject = projectService.getHandlingProjectForOfficer(currentNric);
             String handlingProjectName = (handlingProject != null) ? handlingProject.getProjectName() : null;
-
             choice = officerMenu.displayOfficerMenu(handlingProjectName);
 
-            switch (choice) {
-                // Project Management
-                case 1: viewHandlingProjectDetails(currentNric); break;
-                case 2: registerToHandleProject(currentNric); break;
-                case 3: viewMyRegistrationStatuses(currentNric); break;
-                // Applicant Actions (Delegate or Re-implement using shared services)
-                case 4: viewEligibleProjects(currentNric); break; // Reuses ApplicantController's logic pattern
-                case 5: applyForProject(currentNric); break; // Reuses ApplicantController's logic pattern
-                case 6: viewMyApplication(currentNric); break; // Reuses ApplicantController's logic pattern
-                // Enquiry Management
-                case 7: manageHandlingProjectEnquiries(currentNric); break;
-                // Flat Booking
-                case 8: assistFlatBooking(currentNric); break;
-                case 9: generateBookingReceipt(); break;
-                // Account
-                case 10: handleChangePassword(currentNric, this); break; // Use self as view
-                // Exit
-                case 0: AuthController.logout(); break;
-                default: CommonView.displayInvalidChoice();
+            try {
+                switch (choice) {
+                    case 1: viewHandlingProjectDetails(currentNric); break;
+                    case 2: registerToHandleProject(currentNric); break;
+                    case 3: viewMyRegistrationStatuses(currentNric); break;
+                    case 4: viewEligibleProjects(currentNric); break;
+                    case 5: applyForProject(currentNric); break;
+                    case 6: viewMyApplication(currentNric); break;
+                    case 7: manageHandlingProjectEnquiries(currentNric); break;
+                    case 8: assistFlatBooking(currentNric); break;
+                    case 9: generateBookingReceipt(); break;
+                    case 10: handleChangePassword(currentNric, this); break;
+                    case 0: AuthController.logout(); break;
+                    default: CommonView.displayInvalidChoice();
+                }
+            } catch (Exception e) {
+                 CommonView.displayError("An unexpected error occurred while processing your request.");
+                 System.err.println("Error details: " + e.getMessage());
+                 e.printStackTrace();
             }
              if (choice != 0 && AuthStore.isLoggedIn()) {
                  CommonView.pressEnterToContinue();
              }
-
         } while (choice != 0 && AuthStore.isLoggedIn());
     }
 
-    // --- Project Management Methods ---
+    // --- Project Management ---
     private void viewHandlingProjectDetails(String officerNric) {
         Project handlingProject = projectService.getHandlingProjectForOfficer(officerNric);
-         if (handlingProject == null) {
-             CommonView.displayWarning("You are not currently assigned to handle any project.");
-             return;
-         }
-         // Check project details (even if visibility is off - service/model handles this access implicitly)
-         // Attempting to edit is blocked by lack of menu option / controller logic.
-        officerMenu.displayProjectDetails(handlingProject);
+        // Display details using the officer menu's method
+        officerMenu.displayProjectDetails(handlingProject); // Handles null case internally
     }
 
     private void registerToHandleProject(String officerNric) {
-         // Display list of projects currently open for application (potential candidates)
          List<Project> allOpenProjects = projectService.getAllProjects().stream()
                  .filter(p -> p.isWithinApplicationPeriod(new Date()))
+                 .sorted(Comparator.comparing(Project::getProjectName))
                  .collect(Collectors.toList());
 
          if (allOpenProjects.isEmpty()) {
-             CommonView.displayWarning("No projects are currently open for application/registration.");
+             CommonView.displayWarning("No projects are currently open for officer registration.");
              return;
          }
 
-         System.out.println("\n--- Projects Open for Officer Registration ---");
-         applicantView.displayProjectList(allOpenProjects); // Reuse applicant list view
+         // *** FIX: Use the correct view method ***
+         officerMenu.displayProjectsForRegistration(allOpenProjects);
 
-         int projectId = applicantView.getProjectSelection("Enter Project ID to register for");
-         if (projectId == 0) return; // Cancelled
+         int projectId = applicantView.getProjectSelection("Enter Project ID to register for"); // Reuse prompt is ok
+         if (projectId == 0) { CommonView.displayMessage("Registration cancelled."); return; }
 
-         Project selectedProject = projectService.getProjectById(projectId);
-         if (selectedProject == null || !allOpenProjects.contains(selectedProject)) {
-              CommonView.displayError("Invalid Project ID selected.");
+         // Verify selection was in the list shown (optional but good practice)
+         boolean isValidChoice = allOpenProjects.stream().anyMatch(p -> p.getProjectId() == projectId);
+         if (!isValidChoice) {
+              CommonView.displayError("Invalid Project ID selected from the list.");
               return;
          }
 
-         // Service layer performs eligibility checks
          HDBOfficerRegistration registration = officerService.registerForProject(officerNric, projectId);
          officerMenu.displayRegistrationResult(registration != null, "submitted");
      }
@@ -128,20 +124,18 @@ public class HDBOfficerController extends UserController implements UserControll
         officerMenu.displayRegistrationList(registrations);
     }
 
-    // --- Applicant Action Methods (Reusing ApplicantController patterns) ---
+    // --- Applicant Actions ---
      private void viewEligibleProjects(String officerNric) {
-         this.lastProjectFilters = applicantView.getProjectFilters(); // Get filters
+         this.lastProjectFilters = applicantView.getProjectFilters();
          List<Project> projects = projectService.getVisibleProjectsForApplicant(officerNric);
          projects = applicantService.filterProjects(projects, lastProjectFilters);
-         applicantView.displayProjectList(projects); // Reuse applicant view
+         applicantView.displayProjectList(projects); // Reuse applicant view for listing
      }
 
      private void applyForProject(String officerNric) {
-         // Service layer checks if officer is handling the project they try to apply for (should be blocked if so)
-         // Service layer checks general eligibility (age, marital status)
          BTOApplication existingApp = applicantService.viewApplicationStatus(officerNric);
           if (existingApp != null) {
-             System.out.println(TextFormatUtil.warning("You already have an active application (Status: " + existingApp.getStatus() + "). Cannot apply for another project."));
+             CommonView.displayWarning("You already have an active application (Status: " + existingApp.getStatus() + "). Cannot apply for another project.");
              applicantView.displayApplicationStatus(existingApp);
              return;
          }
@@ -149,69 +143,63 @@ public class HDBOfficerController extends UserController implements UserControll
         List<Project> projects = projectService.getVisibleProjectsForApplicant(officerNric);
          projects = applicantService.filterProjects(projects, lastProjectFilters);
          if (projects == null || projects.isEmpty()) {
-             System.out.println("No eligible projects available to apply for (based on current filters).");
+             CommonView.displayWarning("No eligible projects available to apply for (based on current filters). Try changing filters via Option 4.");
              return;
          }
         applicantView.displayProjectList(projects);
 
         int projectId = applicantView.getProjectSelection("Enter the Project ID you wish to apply for");
-        if (projectId == 0) return;
+        if (projectId == 0) { CommonView.displayMessage("Application cancelled."); return; }
 
         Project selectedProject = projectService.getProjectById(projectId);
           final int finalProjectId = projectId;
          boolean wasDisplayed = projects.stream().anyMatch(p -> p.getProjectId() == finalProjectId);
          if (selectedProject == null || !wasDisplayed) {
-            System.out.println(TextFormatUtil.error("Invalid Project ID or not eligible/visible based on current filters."));
+            CommonView.displayError("Invalid Project ID selected or not eligible/visible based on current filters.");
             return;
         }
-         // Check if officer tries to apply for the project they handle (if any)
-          Project handlingProject = projectService.getHandlingProjectForOfficer(officerNric);
-          if (handlingProject != null && handlingProject.getProjectId() == projectId) {
-               CommonView.displayError("You cannot apply for the project you are assigned to handle.");
-               return;
-          }
 
-
-         User officerAsApplicant = DataStore.getUserByNric(officerNric); // Get user details
-          List<FlatType> applicableTypes = getApplicableFlatTypesForApplicant(officerAsApplicant, selectedProject); // Reuse helper
+         User officerAsApplicant = DataStore.getUserByNric(officerNric);
+         // Use the helper method to find applicable types for THIS applicant and THIS project
+         List<FlatType> applicableTypes = getApplicableFlatTypesForApplicant(officerAsApplicant, selectedProject);
 
         if (applicableTypes.isEmpty()) {
-            System.out.println(TextFormatUtil.error("No suitable flat types available for you in this specific project."));
+            CommonView.displayError("Based on your profile, you are not eligible for any available flat types in this specific project.");
             return;
         }
 
          FlatType selectedFlatType = applicantView.getFlatTypeSelection(applicableTypes);
-         if (selectedFlatType == null) return;
+         if (selectedFlatType == null) return; // View already displayed cancel message
 
+        // Service layer handles final checks (incl. officer not handling this project)
         BTOApplication newApplication = applicantService.applyForProject(officerNric, projectId, selectedFlatType);
         applicantView.displayApplicationResult(newApplication); // Reuse applicant view
      }
 
-      // Helper copied from ApplicantController for consistency
+      // Helper (copied from ApplicantController, consider moving to a shared Util/Service if identical)
      private List<FlatType> getApplicableFlatTypesForApplicant(User applicant, Project project) {
         List<FlatType> types = new ArrayList<>();
          if (applicant == null || project == null) return types;
         int age = applicant.getAge();
         MaritalStatus status = applicant.getMaritalStatus();
-        boolean hasTwoRoom = project.getTotalUnits().getOrDefault(FlatType.TWO_ROOM, 0) > 0;
-        boolean hasThreeRoom = project.getTotalUnits().getOrDefault(FlatType.THREE_ROOM, 0) > 0;
+        boolean offersTwoRoom = project.getTotalUnits().getOrDefault(FlatType.TWO_ROOM, 0) > 0;
+        boolean offersThreeRoom = project.getTotalUnits().getOrDefault(FlatType.THREE_ROOM, 0) > 0;
 
-        if (status == MaritalStatus.SINGLE && age >= 35 && hasTwoRoom) {
+        if (status == MaritalStatus.SINGLE && age >= 35 && offersTwoRoom) {
             types.add(FlatType.TWO_ROOM);
         } else if (status == MaritalStatus.MARRIED && age >= 21) {
-            if (hasTwoRoom) types.add(FlatType.TWO_ROOM);
-            if (hasThreeRoom) types.add(FlatType.THREE_ROOM);
+            if (offersTwoRoom) types.add(FlatType.TWO_ROOM);
+            if (offersThreeRoom) types.add(FlatType.THREE_ROOM);
         }
         return types;
     }
-
 
      private void viewMyApplication(String officerNric) {
         BTOApplication application = applicantService.viewApplicationStatus(officerNric);
         applicantView.displayApplicationStatus(application); // Reuse applicant view
     }
 
-    // --- Enquiry Methods ---
+    // --- Officer Duties ---
     private void manageHandlingProjectEnquiries(String officerNric) {
         Project handlingProject = projectService.getHandlingProjectForOfficer(officerNric);
         if (handlingProject == null) {
@@ -219,97 +207,88 @@ public class HDBOfficerController extends UserController implements UserControll
             return;
         }
 
-        List<Enquiry> enquiries = enquiryService.viewProjectEnquiries(handlingProject.getProjectId());
-        officerMenu.displayProjectEnquiryList(enquiries); // Use officer menu's display
+        List<Enquiry> enquiries = enquiryService.viewProjectEnquiries(handlingProject.getProjectId()).stream()
+                                    .filter(e -> e.getStatus() != EnquiryStatus.CLOSED) // Only show open/answered
+                                    .collect(Collectors.toList());
+        officerMenu.displayProjectEnquiryList(enquiries);
 
-        if (enquiries.isEmpty()) return; // Nothing to reply to
+        if (enquiries.isEmpty()) {
+            CommonView.displayMessage("No open or answered enquiries for this project.");
+            return;
+        }
 
-         int enquiryId = applicantView.getEnquiryIdToManage("reply to"); // Reuse applicant view prompt
-         if (enquiryId == 0) return; // Cancelled
+         int enquiryId = applicantView.getEnquiryIdToManage("reply to"); // Reuse prompt
+         if (enquiryId == 0) return;
 
-         // Verify the ID is from the list shown
           boolean isValidId = enquiries.stream().anyMatch(e -> e.getEnquiryId() == enquiryId);
-          if (!isValidId) {
-              CommonView.displayError("Invalid Enquiry ID selected from the list.");
-              return;
-          }
-
+          if (!isValidId) { CommonView.displayError("Invalid Enquiry ID selected from the list."); return; }
 
          String replyText = officerMenu.getReplyInput();
-         boolean success = enquiryService.replyToEnquiry(enquiryId, officerNric, replyText);
+         boolean success = enquiryService.replyToEnquiry(enquiryId, officerNric, replyText); // Service checks permission
          officerMenu.displayReplyResult(success);
     }
 
-    // --- Booking Methods ---
     private void assistFlatBooking(String officerNric) {
         Project handlingProject = projectService.getHandlingProjectForOfficer(officerNric);
          if (handlingProject == null) {
-             CommonView.displayWarning("You must be assigned to a project to assist with bookings.");
+             CommonView.displayWarning("You must be assigned to a project to assist with bookings for it.");
              return;
          }
 
         String applicantNric = officerMenu.getApplicantNricForBooking();
-        BTOApplication application = officerService.retrieveApplicationForBooking(applicantNric); // Finds SUCCESSFUL app
+        BTOApplication application = officerService.retrieveApplicationForBooking(applicantNric);
 
         officerMenu.displayApplicationForBooking(application);
-        if (application == null) return; // No suitable application found
+        if (application == null) return;
 
-        // Verify the application is for the project the officer is handling
+        // Ensure the application belongs to the project the officer is handling
         if (application.getProjectId() != handlingProject.getProjectId()) {
             CommonView.displayError("This application (ID: " + application.getApplicationId() + ") is for project '"
-                                    + DataStore.getProjectById(application.getProjectId()).getProjectName()
-                                    + "', which you are not handling.");
+                                    + DataStore.getProjectById(application.getProjectId()).getProjectName() // Safe lookup
+                                    + "', which you are not handling (" + handlingProject.getProjectName() + ").");
             return;
         }
 
-        // Determine available flat types for booking (based on *applied* type and project availability)
-         // Applicant already passed eligibility for applied type. Officer just confirms the choice if available.
-         FlatType appliedType = application.getAppliedFlatType();
-         if (handlingProject.getAvailableUnits(appliedType) <= 0) {
-             CommonView.displayError("No units of the applied type (" + appliedType.getDisplayName() + ") are currently available for booking in this project.");
-              // This scenario might indicate a race condition or issue with manager approvals vs supply.
-              // Officer cannot proceed.
-             return;
-         }
+        // Assume booking the applied type if available
+        FlatType typeToBook = application.getAppliedFlatType();
+        if (handlingProject.getAvailableUnits(typeToBook) <= 0) {
+            CommonView.displayError("No units of the applied type (" + typeToBook.getDisplayName() + ") are currently available for booking in project " + handlingProject.getProjectId() + ".");
+            return;
+        }
+        List<FlatType> bookingOptions = List.of(typeToBook); // Only offer the applied type
 
-         // For simplicity, assume applicant books the type they applied for if available.
-         // If they could choose other available types, the logic would need adjustment.
-         FlatType typeToBook = appliedType;
-         // List<FlatType> bookingOptions = List.of(appliedType); // Only allow booking applied type
-         // FlatType typeToBook = officerMenu.getFlatTypeForBooking(bookingOptions);
-         // if (typeToBook == null) return; // Cancelled
-
-
-         // Confirm booking
-         if (officerMenu.confirmBooking(typeToBook)) {
-             // Service handles decrementing units, updating app status, creating booking record
-             FlatBooking booking = bookingService.createBooking(application.getApplicationId(), typeToBook, officerNric);
-             officerMenu.displayBookingResult(booking); // Displays success/failure and receipt if successful
-         } else {
-             System.out.println("Booking cancelled.");
-         }
+        // Confirm booking (no need to re-select type if only one option)
+        if (officerMenu.confirmBooking(typeToBook)) {
+            FlatBooking booking = bookingService.createBooking(application.getApplicationId(), typeToBook, officerNric);
+            officerMenu.displayBookingResult(booking);
+        } else {
+            CommonView.displayMessage("Booking cancelled by officer.");
+        }
     }
 
     private void generateBookingReceipt() {
          int bookingId = officerMenu.getBookingIdForReceipt();
-         if (bookingId <= 0) return; // Allow 0 or negative as cancel/invalid maybe?
+         if (bookingId == 0) return; // Cancelled
 
-         // Check if officer is handling the project associated with this booking? Optional security check.
+         // Permission check: Should officer only be able to gen receipt for their handled project?
          FlatBooking booking = bookingService.getBookingById(bookingId);
          Project handlingProject = projectService.getHandlingProjectForOfficer(AuthStore.getCurrentUserNric());
 
          if (booking != null && handlingProject != null && booking.getProjectId() != handlingProject.getProjectId()) {
-             CommonView.displayError("You can only generate receipts for bookings related to the project you are handling ("+handlingProject.getProjectName()+").");
-             return;
+             CommonView.displayWarning("Warning: Generating receipt for a booking not related to your currently handled project.");
+             // Decide whether to allow or deny based on strictness
+             // Allow for now:
+             // if (!InputUtil.readBooleanYN("This booking is for a different project. Proceed anyway? (y/n): ")) return;
+         } else if (booking != null && handlingProject == null) {
+              CommonView.displayWarning("Warning: You are not currently handling a project, but proceeding to generate receipt.");
          }
-          // Alternatively, allow any officer to generate any receipt? Brief isn't explicit. Let's allow it for now.
 
 
          String receipt = bookingService.generateBookingReceipt(bookingId);
-         officerMenu.displayReceipt(receipt);
+         officerMenu.displayReceipt(receipt); // View handles error display if receipt is null/error string
      }
 
-     // --- Password Change ---
+     // --- Password Change Implementation ---
       @Override public void displayPasswordChangePrompt() { officerMenu.displayPasswordChangePrompt(); }
      @Override public String readOldPassword() { return officerMenu.readOldPassword(); }
      @Override public String readNewPassword() { return officerMenu.readNewPassword(); }
