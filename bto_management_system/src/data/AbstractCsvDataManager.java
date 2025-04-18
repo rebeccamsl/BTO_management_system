@@ -1,20 +1,23 @@
 package data;
 
+import utils.TextFormatUtil; // Assuming you have this for errors
+
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Arrays; // Import Arrays
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors; // Import Collectors
-import utils.TextFormatUtil; // Import for error formatting
 
 /**
  * Abstract base class for DataManagers that use CSV files.
  * Provides common CSV reading and writing functionalities.
+ * @param <K> Key type for the data map
+ * @param <V> Value type (Model object) for the data map
  */
 public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> {
 
+    // Ensure these delimiters are correctly defined and accessible
     protected static final String CSV_DELIMITER = ",";
     protected static final String LIST_DELIMITER = ";"; // Delimiter for lists within a cell
 
@@ -24,75 +27,72 @@ public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> 
         File file = new File(filePath);
 
         if (!file.exists()) {
-            System.out.println("Data file not found, creating new file: " + filePath);
-            File parentDir = file.getParentFile();
-            if (parentDir != null && !parentDir.exists()) {
-                parentDir.mkdirs();
-            }
-            // Write header to the new file immediately after creation
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                 writer.write(getHeaderLine());
-                 writer.newLine();
-             } catch (IOException e) {
-                 System.err.println(TextFormatUtil.error("Failed to write header to new file: " + filePath));
-                 throw e; // Rethrow exception as initialization failed
+             System.out.println("Data file not found, creating new file: " + filePath);
+             File parentDir = file.getParentFile();
+             if (parentDir != null && !parentDir.exists()) {
+                 parentDir.mkdirs(); // Ensure directory exists
              }
-             return dataMap; // Return empty map for the newly created file
+             if (file.createNewFile()) {
+                 // Write header to the new file only if creation succeeded
+                 try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                     writer.write(getHeaderLine());
+                     writer.newLine();
+                 } catch (IOException writeEx) {
+                     System.err.println(TextFormatUtil.error("Failed to write header to new file: " + filePath + " - " + writeEx.getMessage()));
+                 }
+             } else {
+                 System.err.println(TextFormatUtil.error("Failed to create new file: " + filePath));
+             }
+             return dataMap; // Return empty map for new or uncreatable file
         }
+
 
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
-            boolean firstLine = true; // Flag to identify the header line
+            int lineNumber = 0;
+            boolean isHeaderSkipped = false;
 
             while ((line = reader.readLine()) != null) {
-                // Skip the first line (header) explicitly
-                if (firstLine) {
-                    firstLine = false; // Set flag to false after reading the first line
-                    // Optional: Validate header structure if needed here
-                    // String expectedHeader = getHeaderLine();
-                    // if (!line.trim().equals(expectedHeader)) {
-                    //    System.err.println(TextFormatUtil.warning("Warning: Header mismatch in " + filePath + ". Expected: '" + expectedHeader + "', Found: '" + line.trim() + "'"));
-                    // }
-                    continue; // Skip processing this line further
+                 lineNumber++;
+                 if (!isHeaderSkipped) {
+                    isHeaderSkipped = true;
+                    // Optionally validate header here against getHeaderLine()
+                    continue; // Skip header line
                 }
-
-                 if (line.trim().isEmpty()) continue; // Skip empty lines
+                 if (line.trim().isEmpty()) {
+                      // System.out.println("Skipping empty line " + lineNumber + " in " + filePath); // Optional info
+                     continue; // Skip empty lines
+                 }
 
                 try {
-                    String[] values = line.split(CSV_DELIMITER, -1);
-                    V object = parseCsvRow(values); // Call the subclass implementation
+                    // Use the CSV delimiter to split the main line
+                    String[] values = line.split(CSV_DELIMITER, -1); // -1 keeps trailing empty strings
+                    V object = parseCsvRow(values); // Delegate parsing to subclass
                     if (object != null) {
-                        // Ensure key extraction doesn't fail
-                        K key = getKey(object);
-                        if (key != null) {
-                             dataMap.put(key, object);
-                        } else {
-                             System.err.println(TextFormatUtil.error("Error loading data: Could not extract key for object parsed from line: " + line));
-                        }
+                        dataMap.put(getKey(object), object); // Add to map using key from object
+                    } else {
+                        // parseCsvRow should print specific errors, but log general failure too
+                        System.err.println("Failed to parse line " + lineNumber + " in " + filePath + ". Skipping row. Content: " + Arrays.toString(values));
                     }
-                    // parseCsvRow handles its own detailed error logging if parsing fails
                 } catch (Exception e) {
-                     // Catch broader exceptions during parsing/key extraction for a specific line
-                     System.err.println(TextFormatUtil.error("Critical error parsing line in file " + filePath + ": " + line));
-                     e.printStackTrace(); // Log detailed stack trace but continue loading other lines
+                     // Catch any unexpected exception during row processing
+                     System.err.println(TextFormatUtil.error("Unexpected error processing line " + lineNumber + " in file " + filePath + ": " + line));
+                     e.printStackTrace(); // Log parsing error but try to continue loading other lines
                 }
             }
         } catch (FileNotFoundException e) {
-            // This should not happen due to the file existence check above but jic
-            System.err.println(TextFormatUtil.error("Error: Data file not found during read operation: " + filePath));
-            throw e;
-        } catch (IOException e) {
-            System.err.println(TextFormatUtil.error("Error reading data file: " + filePath));
-            throw e;
+            // This case should be handled by the file.exists() check, but included for completeness
+            System.err.println(TextFormatUtil.error("Data file not found during load attempt (should have been created): " + filePath));
+            throw e; // Re-throw as it indicates a setup issue
         }
+        System.out.println("Loaded " + dataMap.size() + " records from: " + filePath);
         return dataMap;
     }
-
 
     @Override
     public void save(String filePath, Map<K, V> dataMap) throws IOException {
         File file = new File(filePath);
-        File parentDir = file.getParentFile();
+         File parentDir = file.getParentFile();
          if (parentDir != null && !parentDir.exists()) {
              parentDir.mkdirs(); // Ensure directory exists before writing
          }
@@ -103,18 +103,24 @@ public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> 
             writer.newLine();
 
             // Write data rows
-            for (V object : dataMap.values()) {
-                 try {
-                     writer.write(formatCsvRow(object)); // Call subclass implementation
-                     writer.newLine();
-                 } catch (Exception e) {
-                     System.err.println(TextFormatUtil.error("Error formatting object for file " + filePath + ". Object: " + object));
-                     e.printStackTrace(); // Log formatting error but continue saving other objects
-                 }
+            if (dataMap != null) { // Check if map is null
+                for (V object : dataMap.values()) {
+                    if (object == null) continue; // Skip null objects in the map
+                    try {
+                        writer.write(formatCsvRow(object)); // Delegate formatting to subclass
+                        writer.newLine();
+                    } catch (Exception e) {
+                        System.err.println(TextFormatUtil.error("Error formatting object for file " + filePath + ": " + object));
+                        e.printStackTrace(); // Log formatting error but continue saving other objects
+                    }
+                }
+                System.out.println("Saving " + dataMap.size() + " records to: " + filePath);
+            } else {
+                System.out.println("Warning: Data map provided for saving to " + filePath + " is null. Saving empty file.");
             }
         } catch (IOException e) {
-            System.err.println(TextFormatUtil.error("Error writing data to file: " + filePath));
-            throw e; // Rethrow to signal failure
+             System.err.println(TextFormatUtil.error("Error writing to file " + filePath + ": " + e.getMessage()));
+             throw e; // Re-throw to indicate save failure
         }
     }
 
@@ -130,50 +136,28 @@ public abstract class AbstractCsvDataManager<K, V> implements DataManager<K, V> 
     /** Extracts the key from a model object for map storage. Must be implemented by subclasses. */
     protected abstract K getKey(V object);
 
-    // --- Helper Methods ---
+     // --- Helper Methods for Subclasses ---
+
+     /** Safely trims string, returns empty string if input is null. */
     protected String safeParseString(String value) {
-        return (value == null) ? "" : value.trim(); // Ensure trim happens, return empty string if null
+        return (value == null) ? "" : value.trim();
     }
 
+    /** Safely parses integer, returns default on error/empty. */
     protected int safeParseInt(String value, int defaultValue) {
         if (value == null || value.trim().isEmpty()) return defaultValue;
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
-             System.err.println(TextFormatUtil.warning("Warning: Could not parse integer '" + value + "', using default " + defaultValue));
+             System.err.println(TextFormatUtil.warning("Could not parse integer '" + value + "', using default " + defaultValue));
             return defaultValue;
         }
     }
 
+     /** Safely parses boolean ("true" case-insensitive), returns default otherwise. */
      protected boolean safeParseBoolean(String value, boolean defaultValue) {
-         String trimmedVal = safeParseString(value).toLowerCase();
-         if (trimmedVal.isEmpty()) return defaultValue;
-         // Handle common boolean strings explicitly
-         if ("true".equals(trimmedVal) || "yes".equals(trimmedVal) || "1".equals(trimmedVal)) return true;
-         if ("false".equals(trimmedVal) || "no".equals(trimmedVal) || "0".equals(trimmedVal)) return false;
-         // Fallback to Boolean.parseBoolean for just "true" (case-insensitive)
-         return Boolean.parseBoolean(trimmedVal); // Will be false for anything else
-     }
-
-     // Helper method to parse lists like "item1;item2" - Copied from ProjectDataManager
-     protected List<String> parseStringList(String data) {
-         if (data == null || data.trim().isEmpty()) {
-             return new ArrayList<>();
-         }
-         // Split by delimiter and filter out empty strings that might result from trailing delimiters
-         return Arrays.stream(data.split(LIST_DELIMITER))
-                      .map(String::trim)
-                      .filter(s -> !s.isEmpty())
-                      .collect(Collectors.toList());
-     }
-
-     // Helper method to format lists - Copied from ProjectDataManager
-     protected String formatStringList(List<String> list) {
-         if (list == null || list.isEmpty()) return "";
-         // Ensure items themselves don't contain the list delimiter, or handle quoting if they might
-         return list.stream()
-                   // Basic check for delimiter within item - replace if found? Or quote? Replacing is simpler.
-                   .map(item -> item.replace(LIST_DELIMITER, "")) // Prevent accidental splitting
-                   .collect(Collectors.joining(LIST_DELIMITER));
+         if (value == null || value.trim().isEmpty()) return defaultValue;
+         // Use equalsIgnoreCase for robust boolean parsing
+         return "true".equalsIgnoreCase(value.trim());
      }
 }

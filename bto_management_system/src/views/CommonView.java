@@ -1,6 +1,6 @@
 package views;
 
-import utils.InputUtil;
+import utils.InputUtil; // Needed for pressEnterToContinue
 import utils.TextFormatUtil;
 
 /**
@@ -45,35 +45,34 @@ public class CommonView {
          String bottomBorder = "\u2517" + borderLine + "\u251B";
 
          String formattedTitle = " " + TextFormatUtil.bold(title) + " ";
-         // Approximate length calculation, might not be perfect with all ANSI codes
-         int approxTitleDisplayLength = title.length() + 2; // +2 for spaces
+         // Approximate length calculation
+         int approxTitleDisplayLength = title.length() + 2;
 
          String contentLine;
          if (approxTitleDisplayLength > totalWidth - 2) {
-             // Truncate title if too long
-             int maxTitleLength = totalWidth - 7; // Account for "...", spaces, bars
+             int maxTitleLength = totalWidth - 7;
              String truncatedTitle = title.substring(0, Math.max(0, maxTitleLength)) + "...";
              formattedTitle = " " + TextFormatUtil.bold(truncatedTitle) + " ";
-             contentLine = "\u2503" + formattedTitle + "\u2503";
-             // Pad if needed (though unlikely after truncation)
-             int currentLength = truncatedTitle.length() + 4; // Approx length
-             contentLine = "\u2503" + formattedTitle + " ".repeat(Math.max(0, totalWidth - currentLength)) + "\u2503";
+             // Use String.format for padding to ensure correct length
+             contentLine = String.format("\u2503%-"+ (totalWidth - 2) +"s\u2503", formattedTitle);
 
          } else {
-             // Center the title
-             int titleDisplayLength = title.length() + 2; // Length without formatting codes
+             int titleDisplayLength = title.length() + 2;
              int sidePadding = Math.max(0, (totalWidth - titleDisplayLength - 2) / 2);
              String leftPad = " ".repeat(sidePadding);
              int rightPaddingLength = Math.max(0, totalWidth - titleDisplayLength - sidePadding - 2);
              String rightPad = " ".repeat(rightPaddingLength);
              contentLine = "\u2503" + leftPad + formattedTitle + rightPad + "\u2503";
+             // Adjust padding if bolding changed effective length (can be tricky)
+             // A simpler fixed padding approach might be more reliable if ANSI codes cause issues
+             // Example: contentLine = String.format("\u2503 %-" + (totalWidth - 4) + "s \u2503", TextFormatUtil.bold(title));
          }
-
 
          System.out.println("\n" + topBorder);
          System.out.println(contentLine);
          System.out.println(bottomBorder);
     }
+
 
     /**
      * Displays a standard informational message.
@@ -118,7 +117,9 @@ public class CommonView {
      * Pauses execution and waits for the user to press Enter.
      */
     public static void pressEnterToContinue() {
-        InputUtil.readString("Press Enter to continue...");
+        // *** FIX: Use an existing InputUtil method to wait for Enter ***
+        InputUtil.readStringAllowEmpty("Press Enter to continue...");
+        // *** End Fix ***
     }
 
      /**
@@ -134,11 +135,15 @@ public class CommonView {
       * @param headers Column headers.
       */
      public static void displayTableHeader(String formatString, String... headers) {
-         System.out.println(); // Newline before header
+         System.out.println();
          System.out.printf(formatString, (Object[]) headers);
-         // Calculate separator length based on a sample formatted string (approximate)
          int width = String.format(formatString, (Object[]) headers).length();
-         System.out.println("-".repeat(Math.max(width, 40))); // Basic separator
+         // Crude way to estimate length without ANSI codes for separator
+         int estimatedContentWidth = 0;
+         for(String h : headers) estimatedContentWidth += h.length();
+         width = Math.max(width - (headers.length * (TextFormatUtil.BOLD.length() + TextFormatUtil.RESET.length())), estimatedContentWidth + headers.length*3);
+
+         System.out.println("-".repeat(Math.max(width, 40)));
      }
 
      /**

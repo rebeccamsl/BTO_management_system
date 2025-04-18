@@ -4,85 +4,100 @@ import interfaces.IProjectService;
 import models.*;
 import enums.*;
 import stores.DataStore;
-import stores.AuthStore; // To check user roles for actions
+// AuthStore might not be needed directly here unless checking creator role deeply
+// import stores.AuthStore;
 import utils.DateUtils;
-import utils.TextFormatUtil; // Added for error messages
+import utils.TextFormatUtil;
 
-import java.util.*; // For List, Map etc.
+import java.util.*;
 import java.util.stream.Collectors;
 
-
+/**
+ * Implementation of the IProjectService interface.
+ * Handles business logic related to BTO projects.
+ */
 public class ProjectServiceImpl implements IProjectService {
 
-    // Constants for eligibility rules
-    private static final int MIN_SINGLE_AGE = 35;
-    private static final int MIN_MARRIED_AGE = 21;
+    // Constants potentially used elsewhere but defined here for context if needed
+    // private static final int MIN_SINGLE_AGE = 35;
+    // private static final int MIN_MARRIED_AGE = 21;
 
+    /**
+     * Retrieves all projects, sorted by name. Usually for Manager view.
+     * @return List of all Project objects.
+     */
     @Override
     public List<Project> getAllProjects() {
-        // Manager view - return all projects regardless of visibility or dates
-         // Optionally sort them
-         return new ArrayList<>(DataStore.getProjects().values())
-                 .stream()
+         return DataStore.getProjects().values().stream()
                  .sorted(Comparator.comparing(Project::getProjectName))
                  .collect(Collectors.toList());
     }
 
+    /**
+     * Retrieves projects visible and open for application for a specific applicant/officer role.
+     * Filters based on project visibility and application period ONLY.
+     * Applicant eligibility for specific flat types is checked during application submission.
+     * @param applicantNric NRIC of the user viewing the projects (Applicant or Officer).
+     * @return List of visible and open Project objects.
+     */
     @Override
     public List<Project> getVisibleProjectsForApplicant(String applicantNric) {
         User applicant = DataStore.getUserByNric(applicantNric);
-         // Allow Officers to view projects like applicants
          if (applicant == null || !(applicant.getRole() == UserRole.APPLICANT || applicant.getRole() == UserRole.OFFICER)) {
-             System.err.println(TextFormatUtil.error("Error: User not found or not an Applicant/Officer."));
+             System.err.println(TextFormatUtil.error("Error finding visible projects: User (" + applicantNric + ") not found or not an Applicant/Officer."));
              return Collections.emptyList();
         }
 
         List<Project> allProjects = new ArrayList<>(DataStore.getProjects().values());
-        Date today = new Date(); // Use current date for filtering
+        Date today = new Date();
 
+        // Filters only on project attributes for viewing list
         return allProjects.stream()
-                .filter(Project::isVisible) // Must be visible
-                .filter(p -> p.isWithinApplicationPeriod(today)) // Must be within application period
-                .filter(p -> isApplicantEligibleForAnyFlatInProject(applicant, p)) // Check eligibility based on rules for *any* flat type offered
-                .sorted(Comparator.comparing(Project::getProjectName)) // Default sort by name
+                .filter(Project::isVisible) // Filter 1: Project visibility toggle must be ON
+                .filter(p -> p.isWithinApplicationPeriod(today)) // Filter 2: Current date must be within application period
+                .sorted(Comparator.comparing(Project::getProjectName)) // Sort result
                 .collect(Collectors.toList());
     }
 
-     // Helper method for eligibility check for *any* flat type in the project
-     // This determines if the project shows up in the list at all for the applicant.
-     // The specific flat type choice is handled during application.
-    private boolean isApplicantEligibleForAnyFlatInProject(User applicant, Project project) {
-        int age = applicant.getAge();
-        MaritalStatus status = applicant.getMaritalStatus();
-
-         boolean offersTwoRoom = project.getTotalUnits().getOrDefault(FlatType.TWO_ROOM, 0) > 0;
-         boolean offersThreeRoom = project.getTotalUnits().getOrDefault(FlatType.THREE_ROOM, 0) > 0;
-
-         if (status == MaritalStatus.SINGLE) {
-            // Single, >= 35 needs 2-Room to be eligible for the project listing
-            return age >= MIN_SINGLE_AGE && offersTwoRoom;
-        } else if (status == MaritalStatus.MARRIED) {
-            // Married, >= 21 needs either 2-Room or 3-Room
-            return age >= MIN_MARRIED_AGE && (offersTwoRoom || offersThreeRoom);
-        } else {
-            return false; // Should not happen
-        }
-    }
-
-
+    /**
+     * Retrieves a specific project by its ID.
+     * @param projectId ID of the project.
+     * @return Project object or null if not found.
+     */
     @Override
     public Project getProjectById(int projectId) {
-        return DataStore.getProjectById(projectId);
+        Project project = DataStore.getProjectById(projectId);
+        if (project == null) {
+            // Log this warning as it might indicate an issue elsewhere if ID was expected to be valid
+            System.err.println(TextFormatUtil.warning("Project with ID " + projectId + " not found in DataStore."));
+        }
+        return project;
     }
 
+     /**
+      * Creates a new BTO project after performing validation checks.
+      * @param managerNric NRIC of the HDB Manager creating the project.
+      * @param name Project name.
+      * @param neighborhood Project location.
+      * @param units Map of FlatType to total unit count.
+      * @param open Application opening date.
+      * @param close Application closing date.
+      * @param slots Maximum number of HDB Officer slots (1-10).
+      * @return The created Project object, or null on failure.
+      */
      @Override
     public Project createProject(String managerNric, String name, String neighborhood, Map<FlatType, Integer> units, Date open, Date close, int slots) {
           User manager = DataStore.getUserByNric(managerNric);
+          // 1. Permission Check
           if (manager == null || manager.getRole() != UserRole.MANAGER) {
-               System.err.println(TextFormatUtil.error("Create project failed: Only HDB Managers can create projects."));
+               System.err.println(TextFormatUtil.error("Create project failed: User ("+managerNric+") not found or is not an HDB Manager."));
                return null;
           }
-
+          // 2. Input Validation
+          if (name == null || name.trim().isEmpty() || neighborhood == null || neighborhood.trim().isEmpty()) {
+               System.err.println(TextFormatUtil.error("Create project failed: Project Name and Neighborhood cannot be empty."));
+               return null;
+          }
           if (open == null || close == null || open.after(close)) {
              System.err.println(TextFormatUtil.error("Create project failed: Invalid application dates. Closing date must be on or after opening date."));
              return null;
@@ -91,67 +106,75 @@ public class ProjectServiceImpl implements IProjectService {
              System.err.println(TextFormatUtil.error("Create project failed: Invalid number of officer slots (must be 1-10)."));
              return null;
          }
+          // 3. Business Rule Validation: Manager Period Conflict
           if (isManagerHandlingAnotherProjectInPeriod(managerNric, open, close)) {
              System.err.println(TextFormatUtil.error("Create project failed: Manager ("+managerNric+") is already handling another project during this application period."));
              return null;
          }
-          // Validate units map (e.g., non-negative values)
+          // 4. Unit Validation
           if (units == null || units.entrySet().stream().anyMatch(entry -> entry.getValue() < 0)) {
               System.err.println(TextFormatUtil.error("Create project failed: Unit counts cannot be negative."));
               return null;
           }
-          // Ensure at least one unit type is specified? Optional validation.
-           if (units.isEmpty() || units.values().stream().allMatch(count -> count == 0)) {
-               System.err.println(TextFormatUtil.warning("Creating project with zero total units specified."));
+           if (units.values().stream().mapToInt(Integer::intValue).sum() == 0) { // Check if total units is zero
+               System.err.println(TextFormatUtil.warning("Creating project with zero total units specified. Is this intended?"));
            }
 
-
-        Project newProject = new Project(name, neighborhood, units, open, close, managerNric, slots);
+        // 5. Create and Store
+        Project newProject = new Project(name.trim(), neighborhood.trim(), units, open, close, managerNric, slots);
         DataStore.addProject(newProject);
-        DataStore.saveAllData(); // Save after creation
+        DataStore.saveAllData(); // Persist
+        System.out.println("Debug: Project created with ID: " + newProject.getProjectId());
         return newProject;
     }
 
+     /** Helper to check manager period conflict */
      private boolean isManagerHandlingAnotherProjectInPeriod(String managerNric, Date newOpen, Date newClose) {
-         for (Project existingProject : DataStore.getProjects().values()) {
-             if (managerNric.equals(existingProject.getAssignedHDBManagerNric())) {
+         return DataStore.getProjects().values().stream()
+             .filter(p -> managerNric.equals(p.getAssignedHDBManagerNric()))
+             .anyMatch(existingProject -> {
                  Date existingOpen = existingProject.getApplicationOpeningDate();
                  Date existingClose = existingProject.getApplicationClosingDate();
-                 if (existingOpen != null && existingClose != null) {
-                     // Check for overlap: (StartA <= EndB) and (EndA >= StartB)
-                     if (!newOpen.after(existingClose) && !newClose.before(existingOpen)) {
-                         return true; // Overlap found
-                     }
-                 }
-             }
-         }
-         return false; // No conflicting project found
+                 // Check for period overlap: !(newEnd < existingStart || newStart > existingEnd)
+                 return existingOpen != null && existingClose != null &&
+                        !newClose.before(existingOpen) && !newOpen.after(existingClose);
+             });
      }
 
-
+     /**
+      * Edits details of an existing project after validation.
+      * @param projectId ID of the project to edit.
+      * @param updatedDetailsContainer A temporary Project object holding the desired *new* values from the view.
+      * @param editorNric NRIC of the manager attempting the edit.
+      * @return true if edit successful, false otherwise.
+      */
      @Override
-     public boolean editProject(int projectId, Project updatedDetails, String editorNric) {
-          // NOTE: Passing the whole 'updatedDetails' object can be problematic.
-          // It's safer to pass specific fields to update.
-          // Let's assume for now the controller constructs a valid 'updatedDetails'
-          // based on user input for editable fields only.
-
-          Project project = DataStore.getProjectById(projectId);
-          if (project == null) {
+     public boolean editProject(int projectId, Project updatedDetailsContainer, String editorNric) {
+          Project projectToEdit = DataStore.getProjectById(projectId); // The actual project object
+          if (projectToEdit == null) {
               System.err.println(TextFormatUtil.error("Edit project failed: Project ID " + projectId + " not found."));
               return false;
           }
+           // 1. Permission Check
            User editor = DataStore.getUserByNric(editorNric);
-           if (editor == null || editor.getRole() != UserRole.MANAGER || !project.getAssignedHDBManagerNric().equals(editorNric)) {
-                System.err.println(TextFormatUtil.error("Edit project failed: Only the assigned HDB Manager (" + project.getAssignedHDBManagerNric() + ") can edit project " + projectId + "."));
+           if (editor == null || editor.getRole() != UserRole.MANAGER || !projectToEdit.getAssignedHDBManagerNric().equals(editorNric)) {
+                System.err.println(TextFormatUtil.error("Edit project failed: User ("+editorNric+") is not the assigned HDB Manager (" + projectToEdit.getAssignedHDBManagerNric() + ") for project " + projectId + "."));
                 return false;
            }
 
-            // Validation before applying changes
-             Date newOpen = updatedDetails.getApplicationOpeningDate();
-             Date newClose = updatedDetails.getApplicationClosingDate();
-             int newSlots = updatedDetails.getMaxOfficerSlots();
+            // 2. Extract and Validate *New* Data from the container object
+             Date newOpen = updatedDetailsContainer.getApplicationOpeningDate();
+             Date newClose = updatedDetailsContainer.getApplicationClosingDate();
+             int newSlots = updatedDetailsContainer.getMaxOfficerSlots();
+             Map<FlatType, Integer> newUnitsMap = updatedDetailsContainer.getTotalUnits(); // This holds the *intended* new totals
+             String newName = updatedDetailsContainer.getProjectName();
+             String newNeighborhood = updatedDetailsContainer.getNeighborhood();
 
+             if (newName == null || newName.trim().isEmpty() ||
+                 newNeighborhood == null || newNeighborhood.trim().isEmpty()) {
+                  System.err.println(TextFormatUtil.error("Edit project failed: Project Name and Neighborhood cannot be empty."));
+                  return false;
+             }
              if (newOpen == null || newClose == null || newOpen.after(newClose)) {
                  System.err.println(TextFormatUtil.error("Edit project failed: Invalid application dates."));
                  return false;
@@ -160,226 +183,305 @@ public class ProjectServiceImpl implements IProjectService {
                  System.err.println(TextFormatUtil.error("Edit project failed: Invalid number of officer slots (must be 1-10)."));
                  return false;
              }
-             // Check manager period conflict *excluding the project being edited*
+              if (newUnitsMap == null || newUnitsMap.entrySet().stream().anyMatch(entry -> entry.getValue() < 0)) {
+                  System.err.println(TextFormatUtil.error("Edit project failed: Unit counts cannot be negative."));
+                  return false;
+              }
+              // 3. Business Rule Validation: Manager Period Conflict (excluding self)
              if (isManagerHandlingAnotherProjectInPeriodExcludingSelf(editorNric, newOpen, newClose, projectId)) {
                   System.err.println(TextFormatUtil.error("Edit project failed: Manager ("+editorNric+") is already handling another project during the updated application period."));
                   return false;
              }
-             // Editing unit counts needs care - prevent if applications exist?
+
+             // 4. Handle Unit Count Editing Restriction
              boolean appsExist = DataStore.getApplications().values().stream().anyMatch(a -> a.getProjectId() == projectId);
-             if (appsExist && !project.getTotalUnits().equals(updatedDetails.getTotalUnits())) {
-                 System.err.println(TextFormatUtil.error("Edit project failed: Cannot change total unit counts after applications have been received."));
-                 // Allow editing only other fields if units are changed? Or reject entirely? Rejecting is safer.
-                 return false;
-                 // Or, only allow increasing units? Complex. Let's disallow changes to total units if apps exist.
+             Map<FlatType, Integer> unitsToActuallySet = new HashMap<>(projectToEdit.getTotalUnits()); // Start with current values
+             boolean unitsWereChanged = false;
+
+             if (!appsExist) {
+                 // No applications yet, allow changing total units
+                 unitsToActuallySet = newUnitsMap; // Use the new map from input
+                 unitsWereChanged = !projectToEdit.getTotalUnits().equals(unitsToActuallySet);
+                 if(unitsWereChanged) System.out.println("Debug: Total units will be updated as no applications exist.");
+             } else if (!projectToEdit.getTotalUnits().equals(newUnitsMap)) {
+                 // Applications exist AND user tried to change units
+                 System.err.println(TextFormatUtil.warning("Edit project warning: Cannot change total unit counts after applications have been received. Unit counts remain unchanged. Other details will be updated if changed."));
+                 // Keep unitsToActuallySet as the original project's units
              }
 
 
-            // Apply changes for editable fields
-            project.setProjectName(updatedDetails.getProjectName());
-            project.setNeighborhood(updatedDetails.getNeighborhood());
-            project.setApplicationOpeningDate(newOpen);
-            project.setApplicationClosingDate(newClose);
-            project.setMaxOfficerSlots(newSlots);
-            // Assuming total units aren't changed if apps exist (based on check above)
-            // project.setTotalUnits(updatedDetails.getTotalUnits()); // Apply if allowed
-            // Visibility is handled by toggleProjectVisibility
+            // 5. Apply Allowed Changes to the actual project object in DataStore
+            projectToEdit.setProjectName(newName);
+            projectToEdit.setNeighborhood(newNeighborhood);
+            projectToEdit.setApplicationOpeningDate(newOpen);
+            projectToEdit.setApplicationClosingDate(newClose);
+            projectToEdit.setMaxOfficerSlots(newSlots);
+            // Only update units if allowed (no apps exist or units weren't changed by user)
+            projectToEdit.setTotalUnits(unitsToActuallySet);
 
-            DataStore.saveAllData();
+            // Recalculate available units ONLY if total units were successfully changed (i.e., no apps existed)
+            if (unitsWereChanged) { // Check the flag set when units were allowed to change
+                 // Reset available counts to match the new total counts
+                 projectToEdit.setAvailableUnits(new HashMap<>(unitsToActuallySet));
+                 System.out.println(TextFormatUtil.info("Available units have been reset to match the new total unit counts."));
+            }
+             // Visibility is handled by toggleProjectVisibility
+
+            DataStore.saveAllData(); // Persist all changes
+            System.out.println("Debug: Project " + projectId + " edited successfully.");
             return true;
      }
 
-      // Helper to check manager conflict excluding the project being edited
+      /** Helper to check manager period conflict excluding the project being edited */
       private boolean isManagerHandlingAnotherProjectInPeriodExcludingSelf(String managerNric, Date newOpen, Date newClose, int projectIdToExclude) {
-         for (Project existingProject : DataStore.getProjects().values()) {
-             if (existingProject.getProjectId() == projectIdToExclude) continue; // Skip self
-
-             if (managerNric.equals(existingProject.getAssignedHDBManagerNric())) {
+          return DataStore.getProjects().values().stream()
+             .filter(p -> p.getProjectId() != projectIdToExclude) // Exclude self
+             .filter(p -> managerNric.equals(p.getAssignedHDBManagerNric()))
+             .anyMatch(existingProject -> {
                  Date existingOpen = existingProject.getApplicationOpeningDate();
                  Date existingClose = existingProject.getApplicationClosingDate();
-                 if (existingOpen != null && existingClose != null) {
-                     if (!newOpen.after(existingClose) && !newClose.before(existingOpen)) {
-                         return true; // Overlap found
-                     }
-                 }
-             }
-         }
-         return false;
+                 // Check for period overlap
+                 return existingOpen != null && existingClose != null &&
+                        !newClose.before(existingOpen) && !newOpen.after(existingClose);
+             });
      }
 
+      /**
+       * Deletes a project after checking permissions and booking status.
+       * @param projectId ID of the project to delete.
+       * @param deleterNric NRIC of the manager attempting deletion.
+       * @return true if deletion successful, false otherwise.
+       */
       @Override
      public boolean deleteProject(int projectId, String deleterNric) {
          Project project = DataStore.getProjectById(projectId);
          if (project == null) {
-             System.err.println(TextFormatUtil.error("Delete project failed: Project not found."));
+             System.err.println(TextFormatUtil.error("Delete project failed: Project ID " + projectId + " not found."));
              return false;
          }
 
+          // Permission Check
           User deleter = DataStore.getUserByNric(deleterNric);
            if (deleter == null || deleter.getRole() != UserRole.MANAGER || !project.getAssignedHDBManagerNric().equals(deleterNric)) {
-                System.err.println(TextFormatUtil.error("Delete project failed: Only the assigned HDB Manager can delete this project."));
+                System.err.println(TextFormatUtil.error("Delete project failed: User ("+deleterNric+") is not the assigned HDB Manager for project " + projectId + "."));
                 return false;
            }
 
-          // Check implications: Prevent deletion if BOOKED applications exist.
+           // Business Rule Check: Cannot delete if bookings exist
           boolean hasBookings = DataStore.getApplications().values().stream()
                                 .anyMatch(a -> a.getProjectId() == projectId && a.getStatus() == BTOApplicationStatus.BOOKED);
           if (hasBookings) {
-              System.err.println(TextFormatUtil.error("Delete project failed: Cannot delete project with active flat bookings."));
+              System.err.println(TextFormatUtil.error("Delete project failed: Cannot delete project " + projectId + " because it has active flat bookings. Applicants must withdraw or bookings resolved first."));
               return false;
           }
 
-          // Optional: Warn if other active (Pending/Successful) applications exist
-          boolean hasActiveApps = DataStore.getApplications().values().stream()
-                                   .anyMatch(a -> a.getProjectId() == projectId &&
-                                             (a.getStatus() == BTOApplicationStatus.PENDING || a.getStatus() == BTOApplicationStatus.SUCCESSFUL));
-           if (hasActiveApps) {
-                System.out.println(TextFormatUtil.warning("Warning: Deleting project with pending/successful applications. These will also be removed."));
-           }
+          // Confirmation (View layer should handle this, but double check is okay)
+          // Warning about deleting associated data is good practice
+          System.out.println(TextFormatUtil.warning("Deleting project " + projectId + " will also remove associated applications, enquiries, and officer registrations."));
 
 
-          // Proceed with deletion
+          // Proceed with deletion of project and related data
           DataStore.removeProject(projectId);
-          // Remove associated applications, enquiries, registrations, bookings
+          // Use removeIf for cleaner removal from related maps
           DataStore.getApplications().values().removeIf(a -> a.getProjectId() == projectId);
           DataStore.getEnquiries().values().removeIf(e -> e.getProjectId() == projectId);
           DataStore.getOfficerRegistrations().values().removeIf(r -> r.getProjectId() == projectId);
-          DataStore.getFlatBookings().values().removeIf(b -> b.getProjectId() == projectId); // Should be none due to check above, but good practice
+          // Flat bookings should be empty based on check above, but remove just in case
+          DataStore.getFlatBookings().values().removeIf(b -> b.getProjectId() == projectId);
 
-          DataStore.saveAllData();
-          System.out.println(TextFormatUtil.success("Project " + projectId + " and associated records deleted successfully."));
+          DataStore.saveAllData(); // Persist deletions
+          System.out.println("Debug: Project " + projectId + " and associated records deleted by " + deleterNric);
           return true;
      }
 
+      /**
+       * Toggles the visibility of a project after checking permissions.
+       * @param projectId ID of the project.
+       * @param isVisible The desired new visibility state.
+       * @param managerNric NRIC of the manager performing the action.
+       * @return true if toggle successful, false otherwise.
+       */
       @Override
      public boolean toggleProjectVisibility(int projectId, boolean isVisible, String managerNric) {
           Project project = DataStore.getProjectById(projectId);
           if (project == null) {
-              System.err.println(TextFormatUtil.error("Toggle visibility failed: Project not found."));
+              System.err.println(TextFormatUtil.error("Toggle visibility failed: Project ID " + projectId + " not found."));
               return false;
           }
 
+           // Permission Check
            User manager = DataStore.getUserByNric(managerNric);
            if (manager == null || manager.getRole() != UserRole.MANAGER || !project.getAssignedHDBManagerNric().equals(managerNric)) {
-                System.err.println(TextFormatUtil.error("Toggle visibility failed: Only the assigned HDB Manager can perform this action."));
+                System.err.println(TextFormatUtil.error("Toggle visibility failed: User ("+managerNric+") is not the assigned HDB Manager for project " + projectId + "."));
                 return false;
            }
 
-          project.setVisibility(isVisible);
-          DataStore.saveAllData();
+          project.setVisibility(isVisible); // Set the new state
+          DataStore.saveAllData(); // Persist
+          System.out.println("Debug: Visibility for project " + projectId + " set to " + isVisible);
           return true;
      }
 
-
+    /**
+     * Retrieves all projects managed by a specific HDB Manager.
+     * @param managerNric NRIC of the manager.
+     * @return List of Project objects managed by this manager, sorted by name.
+     */
     @Override
     public List<Project> getProjectsManagedBy(String managerNric) {
          User manager = DataStore.getUserByNric(managerNric);
           if (manager == null || manager.getRole() != UserRole.MANAGER) {
-               System.err.println(TextFormatUtil.error("Error: User not found or not a manager."));
+               System.err.println(TextFormatUtil.error("Error finding managed projects: User (" + managerNric + ") not found or not a manager."));
                return Collections.emptyList();
           }
          return DataStore.getProjects().values().stream()
-                 .filter(p -> p.getAssignedHDBManagerNric().equals(managerNric))
+                 .filter(p -> managerNric.equals(p.getAssignedHDBManagerNric())) // Use equals for string comparison
                  .sorted(Comparator.comparing(Project::getProjectName))
                  .collect(Collectors.toList());
     }
 
+    /**
+     * Adds an officer to a project's assigned list (Internal method called by ManagerService).
+     * @param projectId ID of the project.
+     * @param officerNric NRIC of the officer to add.
+     * @return true if officer added successfully, false otherwise.
+     */
     @Override
     public boolean addOfficerToProject(int projectId, String officerNric) {
         Project project = DataStore.getProjectById(projectId);
          User officer = DataStore.getUserByNric(officerNric);
 
           if (project == null || officer == null || officer.getRole() != UserRole.OFFICER) {
-               System.err.println(TextFormatUtil.error("Add officer failed: Project or Officer not found/invalid."));
+               System.err.println(TextFormatUtil.error("Internal error (addOfficerToProject): Project ("+projectId+") or Officer ("+officerNric+") not found/invalid."));
                return false;
           }
 
-        boolean added = project.addOfficer(officerNric); // Model checks slots and uniqueness
+        // Project model handles slot check and duplicate check
+        boolean added = project.addOfficer(officerNric);
         if (added) {
-            // Update officer's handling project ID
+             // Update the officer's state to show they are handling this project
              if (officer instanceof HDBOfficer) {
                  ((HDBOfficer) officer).setHandlingProjectId(projectId);
              }
-            DataStore.saveAllData();
+            DataStore.saveAllData(); // Save project and potentially officer state
             return true;
         } else {
-            System.err.println(TextFormatUtil.error("Add officer failed: No remaining slots or officer already assigned to project " + projectId + "."));
+            // Error should be logged by project.addOfficer if needed, or log here.
+            System.err.println(TextFormatUtil.error("Internal error (addOfficerToProject): Failed to add officer " + officerNric + " to project " + projectId + " (check slots/duplicates)."));
             return false;
         }
     }
 
+    /**
+     * Removes an officer from a project's assigned list.
+     * @param projectId ID of the project.
+     * @param officerNric NRIC of the officer to remove.
+     * @return true if removal successful.
+     */
     @Override
     public boolean removeOfficerFromProject(int projectId, String officerNric) {
          Project project = DataStore.getProjectById(projectId);
           User officer = DataStore.getUserByNric(officerNric);
 
            if (project == null || officer == null || officer.getRole() != UserRole.OFFICER) {
-               System.err.println(TextFormatUtil.error("Remove officer failed: Project or Officer not found/invalid."));
+               System.err.println(TextFormatUtil.error("Remove officer failed: Project ("+projectId+") or Officer ("+officerNric+") not found/invalid."));
                return false;
           }
 
          boolean removed = project.removeOfficer(officerNric);
          if (removed) {
-             // Clear officer's handling project ID
+              // Clear the officer's state only if they were handling THIS project
               if (officer instanceof HDBOfficer) {
-                   // Only clear if they were handling *this* project
                    if (Objects.equals(((HDBOfficer) officer).getHandlingProjectId(), projectId)) {
                         ((HDBOfficer) officer).clearHandlingProject();
                    }
               }
-            DataStore.saveAllData();
+            DataStore.saveAllData(); // Save project and potentially officer state
             return true;
-        } else {
-             System.err.println(TextFormatUtil.warning("Remove officer warning: Officer " + officerNric + " was not assigned to project " + projectId + "."));
-             return false; // Or true if not being assigned isn't an error? Let's say false.
         }
+        // Officer wasn't on the list, maybe log a warning but return false as no change occurred.
+         System.err.println(TextFormatUtil.warning("Remove officer warning: Officer " + officerNric + " was not found in the assigned list for project " + projectId + "."));
+        return false;
     }
 
-
+    /**
+     * Decrements available units for a project/flat type (Internal method called by BookingService).
+     * @param projectId ID of the project.
+     * @param type FlatType being booked.
+     * @return true if unit count decremented successfully, false if no units were available.
+     */
     @Override
     public boolean decrementProjectUnit(int projectId, FlatType type) {
         Project project = DataStore.getProjectById(projectId);
         if (project == null) {
-             System.err.println(TextFormatUtil.error("Decrement unit failed: Project not found."));
+             System.err.println(TextFormatUtil.error("Internal error (decrementProjectUnit): Project ID " + projectId + " not found."));
              return false;
         }
+         if (type == null) {
+             System.err.println(TextFormatUtil.error("Internal error (decrementProjectUnit): Flat type cannot be null for project " + projectId + "."));
+             return false;
+         }
         boolean success = project.decrementAvailableUnits(type);
         if (success) {
-            DataStore.saveAllData();
+            DataStore.saveAllData(); // Save change
         } else {
-             System.err.println(TextFormatUtil.error("Decrement unit failed: No available units for " + type.getDisplayName() + " in project " + projectId + "."));
+            // Log the error that booking should fail due to no units
+            System.err.println(TextFormatUtil.error("Internal error (decrementProjectUnit): No available units for " + type.getDisplayName() + " in project " + projectId + ". Booking cannot proceed."));
         }
         return success;
     }
 
+    /**
+     * Increments available units (Internal method called by ManagerService on withdrawal approval).
+     * @param projectId ID of the project.
+     * @param type FlatType being returned.
+     * @return true if unit count incremented successfully.
+     */
     @Override
     public boolean incrementProjectUnit(int projectId, FlatType type) {
          Project project = DataStore.getProjectById(projectId);
          if (project == null) {
-              System.err.println(TextFormatUtil.error("Increment unit failed: Project not found."));
+              System.err.println(TextFormatUtil.error("Internal error (incrementProjectUnit): Project ID " + projectId + " not found."));
               return false;
          }
-         project.incrementAvailableUnits(type); // Assumes model handles logic & warnings
-         DataStore.saveAllData();
+         if (type == null) {
+              System.err.println(TextFormatUtil.error("Internal error (incrementProjectUnit): Flat type cannot be null for project " + projectId + "."));
+              return false;
+         }
+         project.incrementAvailableUnits(type); // Model handles logic & ceiling check
+         DataStore.saveAllData(); // Save change
          return true;
     }
 
+    /**
+     * Checks if a given date is within a project's application period.
+     * @param projectId ID of the project.
+     * @param date The date to check.
+     * @return true if within period (inclusive), false otherwise or if project/dates invalid.
+     */
     @Override
     public boolean isProjectWithinApplicationPeriod(int projectId, Date date) {
         Project project = DataStore.getProjectById(projectId);
+        if (date == null) return false; // Cannot check against null date
         return project != null && project.isWithinApplicationPeriod(date);
     }
 
+     /**
+      * Retrieves the project an HDB Officer is currently assigned to handle.
+      * @param officerNric NRIC of the HDB Officer.
+      * @return Project object or null if not an officer or not assigned.
+      */
      @Override
      public Project getHandlingProjectForOfficer(String officerNric) {
          User user = DataStore.getUserByNric(officerNric);
          if (user instanceof HDBOfficer) {
              HDBOfficer officer = (HDBOfficer) user;
+             // Read the handling project ID stored in the officer object (set during approval)
              Integer handlingProjectId = officer.getHandlingProjectId();
              if (handlingProjectId != null) {
-                 return DataStore.getProjectById(handlingProjectId);
+                 return DataStore.getProjectById(handlingProjectId); // Return the project
              }
          }
-         return null; // Not an officer or not handling any project
+         return null; // Not an officer or not currently handling any project
      }
 }

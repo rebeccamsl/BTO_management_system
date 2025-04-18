@@ -1,3 +1,2 @@
-flat_bookings
 BookingID,AppID,ApplicantNRIC,ProjectID,BookedFlatType,OfficerNRIC,BookingDate
-1,3,S3456789C,1,THREE_ROOM,T3333333F,2024-02-05
+1,3,S3456789C,1,THREE_ROOM,T3333333F,2025-04-05

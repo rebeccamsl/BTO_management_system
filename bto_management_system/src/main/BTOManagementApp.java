@@ -1,102 +1,78 @@
-package main; // Root package for the main application class
+package main;
 
-
-// Import necessary classes from other packages
-import controllers.ApplicantController;
+import controllers.ApplicantController; // Ensure this import is correct
 import controllers.AuthController;
 import controllers.HDBManagerController;
 import controllers.HDBOfficerController;
 import models.User;
 import stores.AuthStore;
 import stores.DataStore;
-// FilePathConstants is used *inside* DataStore.initialize now, no longer needed here for the call itself
-import utils.InputUtil; // If needed for Scanner closing
+import utils.FilePathConstants;
+import utils.InputUtil;
 import views.CommonView;
-import views.LoginMenu; // Although AuthController uses it mostly
+import views.LoginMenu;
 
-/**
- * Main application class for the BTO Management System.
- * Initializes data, handles the main login/logout loop, and dispatches
- * control to the appropriate role-based controller.
- */
 public class BTOManagementApp {
 
     public static void main(String[] args) {
         try {
-            // 1. Initialize DataStore (Load data from files)
-            // CORRECTED: Call initialize() without arguments, as defined in DataStore.java
-            DataStore.initialize();
+            DataStore.initialize(); // Corrected call
 
             CommonView.displayWelcomeMessage();
-            AuthController authController = new AuthController(); // Handles login logic
+            AuthController authController = new AuthController();
 
             while (true) {
-                // 2. Authentication Loop (Login or Exit)
                 boolean loggedIn = authController.startLoginProcess();
 
                 if (!loggedIn) {
-                    // User chose to exit from the initial login screen
-                    break; // Exit the main application loop
+                    break;
                 }
 
-                // 3. User is Logged In - Dispatch to Role-Specific Controller
                 User currentUser = AuthStore.getCurrentUser();
                 if (currentUser == null) {
-                    // This should ideally not happen if loggedIn is true, but a safety check
-                    CommonView.displayError("Critical Error: Login reported success, but no user found in session. Please contact support.");
-                    continue; // Go back to login prompt
+                    CommonView.displayError("Critical Error: Login reported success, but no user found in session.");
+                    continue;
                 }
 
-                // Instantiate the appropriate controller based on user role
                 switch (currentUser.getRole()) {
                     case APPLICANT:
-                        ApplicantController applicantController = new ApplicantController();
-                        applicantController.showApplicantMenu(); // Enters the applicant's menu loop
+                        ApplicantController applicantController = new ApplicantController(); // Ensure type is correct
+                        applicantController.showApplicantMenu(); // <<< THIS IS LINE 53 - Ensure method exists and is public
                         break;
                     case OFFICER:
                         HDBOfficerController officerController = new HDBOfficerController();
-                        officerController.showOfficerMenu(); // Enters the officer's menu loop
+                        officerController.showOfficerMenu();
                         break;
                     case MANAGER:
                         HDBManagerController managerController = new HDBManagerController();
-                        managerController.showManagerMenu(); // Enters the manager's menu loop
+                        managerController.showManagerMenu();
                         break;
                     default:
                         CommonView.displayError("Error: Unknown user role encountered (" + currentUser.getRole() + "). Logging out.");
-                        AuthController.logout(); // Log out user with unknown role
+                        AuthController.logout();
                 }
 
-                // After the role-specific menu loop ends (due to logout choice),
-                // the main loop continues, effectively going back to the login prompt.
                 if (!AuthStore.isLoggedIn()) {
-                    // Optional message
-                    // CommonView.displayMessage("Returning to login screen...");
+                    // Loop continues back to login prompt
                 }
-            } // End of main application loop (while true)
+            }
 
         } catch (Exception e) {
-            // Catch unexpected errors during runtime
             System.err.println("\n!!! An unexpected error occurred: " + e.getMessage() + " !!!");
-            e.printStackTrace(); // Print stack trace for debugging
+            e.printStackTrace();
             System.err.println("Attempting to save data before exiting...");
-            DataStore.saveAllData(); // Attempt to save data on crash
+            DataStore.saveAllData();
             System.err.println("Application will now exit due to the error.");
 
         } finally {
-            // 4. Final Cleanup (Save data and close resources)
-            // Ensure data is saved if the loop exits normally (e.g., user chose Exit)
-            // Check if the exit was graceful (not due to error and user chose to exit)
-            boolean gracefulExit = !AuthStore.isLoggedIn(); // Simple check, assumes logout means intended exit
+            boolean gracefulExit = !AuthStore.isLoggedIn();
 
             if (gracefulExit) {
-                 CommonView.displayGoodbyeMessage();
-                 DataStore.saveAllData(); // Save data on clean exit too
-            } else if (!AuthStore.isLoggedIn()) {
-                // If logged out but loop didn't break (e.g., password change), don't show goodbye yet
+                 CommonView.displayGoodbyeMessage(); // This call should now work if CommonView compiles
+                 DataStore.saveAllData();
             }
 
-            // Close the scanner if InputUtil manages a global one
-             // InputUtil.closeScanner();
+             // InputUtil.closeScanner(); // Uncomment if needed
              System.out.println("Application finished.");
         }
     }

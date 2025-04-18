@@ -8,15 +8,8 @@ public class InputUtil {
 
     private static final Scanner scanner = new Scanner(System.in);
 
-    // Prevent instantiation
     private InputUtil() {}
 
-    /**
-     * Gets a non-empty string input from the user.
-     *
-     * @param prompt The message to display to the user.
-     * @return The non-empty string entered by the user.
-     */
     public static String readString(String prompt) {
         String input;
         while (true) {
@@ -30,34 +23,28 @@ public class InputUtil {
         }
     }
 
-    /**
-     * Gets an integer input from the user.
-     *
-     * @param prompt The message to display to the user.
-     * @return The integer entered by the user.
-     */
+    public static String readStringAllowEmpty(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine().trim();
+    }
+
     public static int readInt(String prompt) {
         while (true) {
             System.out.print(prompt);
             try {
-                int value = scanner.nextInt();
-                scanner.nextLine(); // Consume newline
+                String line = scanner.nextLine().trim();
+                if (line.isEmpty()) {
+                     System.out.println(TextFormatUtil.error("Input cannot be empty. Please enter a whole number."));
+                     continue;
+                }
+                int value = Integer.parseInt(line);
                 return value;
-            } catch (InputMismatchException e) {
-                System.out.println(TextFormatUtil.error("Invalid input. Please enter an integer."));
-                scanner.nextLine(); // Consume invalid input
+            } catch (NumberFormatException e) {
+                System.out.println(TextFormatUtil.error("Invalid input. Please enter a whole number."));
             }
         }
     }
 
-     /**
-     * Gets an integer input from the user within a specified range (inclusive).
-     *
-     * @param prompt The message to display to the user.
-     * @param min The minimum allowed value.
-     * @param max The maximum allowed value.
-     * @return The integer entered by the user within the range.
-     */
     public static int readIntInRange(String prompt, int min, int max) {
         int value;
         while (true) {
@@ -65,18 +52,21 @@ public class InputUtil {
             if (value >= min && value <= max) {
                 return value;
             } else {
-                System.out.println(TextFormatUtil.error(String.format("Input must be between %d and %d. Please try again.", min, max)));
+                System.out.println(TextFormatUtil.error(String.format("Input must be between %d and %d (inclusive). Please try again.", min, max)));
             }
         }
     }
 
+     public static int safeParseInt(String value, int defaultValue) {
+        if (value == null || value.trim().isEmpty()) return defaultValue;
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+             System.err.println("Warning: Could not parse integer '" + value + "', using default " + defaultValue);
+            return defaultValue;
+        }
+    }
 
-    /**
-     * Gets a positive integer input from the user.
-     *
-     * @param prompt The message to display to the user.
-     * @return The positive integer entered by the user.
-     */
     public static int readPositiveInt(String prompt) {
         int value;
         while (true) {
@@ -84,43 +74,35 @@ public class InputUtil {
              if (value > 0) {
                  return value;
              } else {
-                 System.out.println(TextFormatUtil.error("Input must be a positive integer. Please try again."));
+                 System.out.println(TextFormatUtil.error("Input must be a positive integer (greater than 0). Please try again."));
              }
         }
     }
 
-     /**
-     * Gets a date input from the user in yyyy-MM-dd format.
-     *
-     * @param prompt The message to display to the user.
-     * @return The Date object parsed from the user input.
-     */
     public static Date readDate(String prompt) {
         while (true) {
-            System.out.print(prompt + " (yyyy-MM-dd): ");
-            String dateString = scanner.nextLine().trim();
+            String dateString = readStringAllowEmpty(prompt + " (yyyy-MM-dd or 0 to cancel): ");
+            if ("0".equals(dateString)) {
+                 return null;
+            }
+            if (dateString.isEmpty()){
+                 System.out.println(TextFormatUtil.error("Date cannot be empty. Please use yyyy-MM-dd or enter 0 to cancel."));
+                 continue;
+            }
             if (DateUtils.isValidDateFormat(dateString)) {
                  Date parsedDate = DateUtils.parseDate(dateString);
                  if (parsedDate != null) {
                      return parsedDate;
                  }
-                 // else parseDate already printed an error
             } else {
-                System.out.println(TextFormatUtil.error("Invalid date format. Please use yyyy-MM-dd."));
+                System.out.println(TextFormatUtil.error("Invalid date format. Please use yyyy-MM-dd or enter 0 to cancel."));
             }
         }
     }
 
-     /**
-     * Gets a boolean input from the user (y/n).
-     *
-     * @param prompt The message to display to the user (should end with "(y/n): ").
-     * @return true if the user enters 'y' (case-insensitive), false otherwise ('n').
-     */
     public static boolean readBooleanYN(String prompt) {
         while (true) {
-            System.out.print(prompt);
-            String input = scanner.nextLine().trim().toLowerCase();
+            String input = readString(prompt).toLowerCase();
             if ("y".equals(input)) {
                 return true;
             } else if ("n".equals(input)) {
@@ -131,11 +113,14 @@ public class InputUtil {
         }
     }
 
-
-    /**
-     * Closes the underlying scanner. Should be called only once when the application exits.
-     */
     public static void closeScanner() {
-        scanner.close();
+        try {
+            if (scanner != null) {
+                scanner.close();
+                System.out.println("Debug: Input scanner closed.");
+            }
+        } catch (IllegalStateException e) {
+            System.err.println("Warning: Scanner already closed or in invalid state.");
+        }
     }
 }

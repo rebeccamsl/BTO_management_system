@@ -4,17 +4,19 @@ import utils.InputUtil;
 import utils.TextFormatUtil;
 import models.*;
 import enums.FlatType;
+import enums.BTOApplicationStatus;
 import stores.DataStore; // Used for simple lookups in display methods
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator; // Import comparator for sorting
 
 /**
  * Handles the display and input for the Applicant user interface.
  * Implements PasswordChangeView for the password change functionality.
  */
-public class ApplicantMenu implements controllers.UserController.PasswordChangeView {
+public class ApplicantMenu implements controllers.UserController.PasswordChangeView { // Implement interface
 
      /**
       * Displays the main menu for Applicants and gets their choice.
@@ -33,42 +35,51 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
     }
 
     /**
-     * Prompts the user for project filter criteria.
+     * Prompts the user for project filter criteria. Uses readStringAllowEmpty.
      * @return A map containing the entered filters.
      */
-    public Map<String, String> getProjectFilters() {
-        Map<String, String> filters = new HashMap<>();
-        System.out.println("\n--- Filter Projects (Leave blank to skip a filter) ---");
-        String location = InputUtil.readString("Enter Neighborhood/Location: ");
-        if (!location.isEmpty()) filters.put("location", location.trim());
+     public Map<String, String> getProjectFilters() {
+         Map<String, String> filters = new HashMap<>();
+         System.out.println("\n--- Filter Projects (Press Enter to skip a filter) ---");
 
-        String flatTypeStr = InputUtil.readString("Enter Flat Type (e.g., 2-Room, 3-Room): ");
-         if (!flatTypeStr.isEmpty()) {
-             if (FlatType.fromDisplayName(flatTypeStr.trim()) != null) {
-                filters.put("flatType", flatTypeStr.trim());
-             } else {
-                 CommonView.displayWarning("Invalid flat type entered for filter, ignoring.");
-             }
+         String locationInput = InputUtil.readStringAllowEmpty("Enter Neighborhood/Location: ");
+         String location = locationInput.trim();
+         if (!location.isEmpty()) {
+             filters.put("location", location);
          }
-        return filters;
-    }
+
+         String flatTypeInput = InputUtil.readStringAllowEmpty("Enter Flat Type (e.g., 2-Room, 3-Room): ");
+         String flatTypeStr = flatTypeInput.trim();
+          if (!flatTypeStr.isEmpty()) {
+              FlatType validatedType = FlatType.fromDisplayName(flatTypeStr); // Uses helper to check validity
+              if (validatedType != null) {
+                  // Store the VALIDATED display name
+                  filters.put("flatType", validatedType.getDisplayName());
+              } else {
+                  if (!flatTypeInput.isEmpty()) {
+                     CommonView.displayWarning("Invalid flat type '" + flatTypeStr + "' entered for filter, ignoring this filter.");
+                  }
+              }
+          }
+         return filters;
+     }
 
     /**
      * Displays a list of BTO projects in a formatted table.
      * @param projects The list of Project objects to display.
      */
      public void displayProjectList(List<Project> projects) {
-         System.out.println("\n--- Eligible BTO Projects ---");
+         System.out.println("\n--- BTO Projects Available for Application ---");
          if (projects == null || projects.isEmpty()) {
-             System.out.println("No eligible projects found matching your criteria.");
+             System.out.println("No projects found matching your criteria.");
              return;
          }
-         String headerFormat = "%-5s | %-25s | %-15s | %-10s | %-10s | %-10s | %-10s\n";
-         String rowFormat    = "%-5d | %-25s | %-15s | %-10s | %-10s | %-10s | %-10s\n";
-         CommonView.displayTableHeader(headerFormat,"ID", "Project Name", "Neighborhood", "Open Date", "Close Date", "2-Room", "3-Room");
+         String headerFormat = "%-5s | %-25s | %-15s | %-10s | %-10s | %-11s | %-11s\n";
+         String rowFormat    = "%-5d | %-25s | %-15s | %-10s | %-10s | %-11s | %-11s\n";
+         CommonView.displayTableHeader(headerFormat,"ID", "Project Name", "Neighborhood", "Open Date", "Close Date", "2-Room(A/T)", "3-Room(A/T)");
          for (Project p : projects) {
-             String twoRoomInfo = p.getAvailableUnits().getOrDefault(FlatType.TWO_ROOM, 0) + "/" + p.getTotalUnits().getOrDefault(FlatType.TWO_ROOM, 0);
-             String threeRoomInfo = p.getAvailableUnits().getOrDefault(FlatType.THREE_ROOM, 0) + "/" + p.getTotalUnits().getOrDefault(FlatType.THREE_ROOM, 0);
+             String twoRoomInfo = p.getAvailableUnits(FlatType.TWO_ROOM) + "/" + p.getTotalUnits().getOrDefault(FlatType.TWO_ROOM, 0);
+             String threeRoomInfo = p.getAvailableUnits(FlatType.THREE_ROOM) + "/" + p.getTotalUnits().getOrDefault(FlatType.THREE_ROOM, 0);
               CommonView.displayTableRow(rowFormat,
                      p.getProjectId(),
                      p.getProjectName(),
@@ -91,12 +102,12 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
 
       /**
        * Prompts the user to select a flat type from a list of available options.
-       * @param availableTypes List of FlatType enums applicable for selection.
+       * @param availableTypes List of FlatType enums applicable for selection based on eligibility.
        * @return The selected FlatType, or null if cancelled.
        */
       public FlatType getFlatTypeSelection(List<FlatType> availableTypes) {
          if (availableTypes == null || availableTypes.isEmpty()) {
-             CommonView.displayWarning("No applicable flat types for selection in this project.");
+             CommonView.displayWarning("No applicable flat types for selection in this project based on your eligibility.");
              return null;
          }
 
@@ -138,19 +149,20 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
               return;
           }
           Project project = DataStore.getProjectById(application.getProjectId());
-          String projectName = (project != null ? project.getProjectName() : "N/A (Project data unavailable)");
+          String projectName = (project != null ? project.getProjectName() : "N/A (Project data missing)");
           String neighborhood = (project != null ? project.getNeighborhood() : "N/A");
 
-          CommonView.displayMessage(String.format("%-15s: %d", "Application ID", application.getApplicationId()));
-          CommonView.displayMessage(String.format("%-15s: %s", "Project Name", projectName));
-          CommonView.displayMessage(String.format("%-15s: %s", "Neighborhood", neighborhood));
-          CommonView.displayMessage(String.format("%-15s: %s", "Applied For", application.getAppliedFlatType().getDisplayName()));
-          CommonView.displayMessage(String.format("%-15s: %s", "Submit Date", utils.DateUtils.formatDate(application.getSubmissionDate())));
-          CommonView.displayMessage(String.format("%-15s: %s", "Status", TextFormatUtil.bold(application.getStatus().name())));
+          String format = "%-15s: %s\n";
+          System.out.printf(format, "Application ID", application.getApplicationId());
+          System.out.printf(format, "Project Name", projectName);
+          System.out.printf(format, "Neighborhood", neighborhood);
+          System.out.printf(format, "Applied For", application.getAppliedFlatType().getDisplayName());
+          System.out.printf(format, "Submit Date", utils.DateUtils.formatDate(application.getSubmissionDate()));
+          System.out.printf(format, "Status", TextFormatUtil.bold(application.getStatus().name()));
 
           if (application.getStatus() == BTOApplicationStatus.BOOKED) {
-              CommonView.displayMessage(String.format("%-15s: %s", "Booked Flat", (application.getBookedFlatType() != null ? application.getBookedFlatType().getDisplayName() : "N/A")));
-              CommonView.displayMessage(String.format("%-15s: %s", "Booking ID", (application.getFlatBookingId() != null ? application.getFlatBookingId() : "N/A")));
+              System.out.printf(format, "Booked Flat", (application.getBookedFlatType() != null ? application.getBookedFlatType().getDisplayName() : "N/A"));
+              System.out.printf(format, "Booking ID", (application.getFlatBookingId() != null ? application.getFlatBookingId() : "N/A"));
           }
           if (application.isWithdrawalRequested()) {
                CommonView.displayWarning("NOTE: Withdrawal Requested - Pending Manager Approval");
@@ -179,10 +191,6 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
      }
 
      // --- Enquiry Management ---
-      /**
-       * Displays the menu for managing enquiries.
-       * @return The user's menu choice.
-       */
       public int displayEnquiryMenu() {
          CommonView.displayNavigationBar("Manage Enquiries");
          System.out.println("1. Submit New Enquiry");
@@ -193,45 +201,29 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
          return InputUtil.readIntInRange("Enter choice: ", 0, 4);
      }
 
-      /**
-       * Displays available projects and prompts for selection for submitting an enquiry.
-       * @param allProjects List of all projects in the system.
-       * @return Project ID selected, or <= 0 if cancelled or none available.
-       */
       public int getEnquiryProjectIdInput(List<Project> allProjects) {
           System.out.println("\n--- Available Projects for Enquiry ---");
           if (allProjects == null || allProjects.isEmpty()) {
              System.out.println("No projects currently in the system.");
              return -1;
           }
-          String format = "%-5s | %s\n";
-          CommonView.displayTableHeader(format, "ID", "Project Name");
-          allProjects.forEach(p -> CommonView.displayTableRow(format, p.getProjectId(), p.getProjectName()));
+          String headerFormat = "%-5s | %s\n";
+          String rowFormat    = "%-5d | %s\n";
+          CommonView.displayTableHeader(headerFormat,"ID", "Project Name");
+          allProjects.sort(Comparator.comparingInt(Project::getProjectId));
+          allProjects.forEach(p -> CommonView.displayTableRow(rowFormat, p.getProjectId(), p.getProjectName()));
           return InputUtil.readInt("Enter the Project ID for your enquiry (or 0 to cancel): ");
       }
 
-      /**
-       * Prompts for and reads the content of a new enquiry.
-       * @return The enquiry text entered by the user.
-       */
       public String getEnquiryContentInput() {
           return InputUtil.readString("Enter your enquiry details: ");
       }
 
-       /**
-        * Displays the result of submitting an enquiry.
-        * @param success true if submission was successful, false otherwise.
-        */
        public void displaySubmitEnquiryResult(boolean success) {
          if (success) CommonView.displaySuccess("Enquiry submitted successfully.");
          else CommonView.displayError("Failed to submit enquiry.");
      }
 
-      /**
-       * Displays a list of enquiries in a formatted table, including replies.
-       * @param title The title for the enquiry list section.
-       * @param enquiries The list of Enquiry objects to display.
-       */
       public void displayEnquiryList(String title, List<Enquiry> enquiries) {
           System.out.println("\n--- " + title + " ---");
           if (enquiries == null || enquiries.isEmpty()) {
@@ -241,75 +233,52 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
           String headerFormat = "%-5s | %-10s | %-15s | %-40s | %s\n";
           String rowFormat    = "%-5d | %-10s | %-15s | %-40s | %d\n";
           CommonView.displayTableHeader(headerFormat, "ID", "Status", "Project", "Enquiry Content (Preview)", "Replies");
-
+          enquiries.sort(Comparator.comparingInt(Enquiry::getEnquiryId));
           for (Enquiry e : enquiries) {
               Project p = DataStore.getProjectById(e.getProjectId());
               String projectName = (p != null ? p.getProjectName() : "N/A");
-              String contentPreview = e.getContent().substring(0, Math.min(e.getContent().length(), 40)) + (e.getContent().length() > 40 ? "..." : "");
+              int previewLength = Math.min(e.getContent().length(), 40);
+              String contentPreview = e.getContent().substring(0, previewLength) + (e.getContent().length() > 40 ? "..." : "");
               CommonView.displayTableRow(rowFormat,
                       e.getEnquiryId(),
                       e.getStatus(),
                       projectName,
                       contentPreview,
                       e.getReplies().size());
-
                  if (!e.getReplies().isEmpty()) {
                     for (String reply : e.getReplies()) {
-                        // Indent replies for better readability
-                        System.out.println("      \u21B3 " + TextFormatUtil.info(reply)); // Use info color for replies
+                        System.out.println("      \u21B3 " + TextFormatUtil.info(reply));
                     }
-                    System.out.println(); // Add a blank line after replies for separation
-                 } else {
-                    // Add a blank line even if no replies to maintain spacing
                     System.out.println();
+                 } else {
+                     System.out.println();
                  }
           }
       }
 
-       /**
-        * Prompts the user for an Enquiry ID for a specific management action.
-        * @param action The action being performed (e.g., "edit", "delete", "reply").
-        * @return The Enquiry ID entered, or 0 to cancel.
-        */
        public int getEnquiryIdToManage(String action) {
            return InputUtil.readInt("Enter the Enquiry ID to " + action + " (or 0 to cancel): ");
        }
 
-       /**
-        * Prompts for and reads the updated content for an enquiry being edited.
-        * @return The new enquiry text.
-        */
        public String getEditedEnquiryContentInput() {
            return InputUtil.readString("Enter the new enquiry text: ");
        }
 
-        /**
-         * Displays the result of an attempt to edit an enquiry.
-         * @param success true if editing was successful, false otherwise.
-         */
         public void displayEditEnquiryResult(boolean success) {
          if (success) CommonView.displaySuccess("Enquiry updated successfully.");
          else CommonView.displayError("Failed to update enquiry.");
      }
 
-       /**
-        * Prompts the user to confirm deleting an enquiry.
-        * @return true if the user confirms (y), false otherwise (n).
-        */
        public boolean confirmDeleteEnquiry() {
          return InputUtil.readBooleanYN("Are you sure you want to delete this enquiry permanently? (y/n): ");
      }
 
-        /**
-         * Displays the result of an attempt to delete an enquiry.
-         * @param success true if deletion was successful, false otherwise.
-         */
         public void displayDeleteEnquiryResult(boolean success) {
          if (success) CommonView.displaySuccess("Enquiry deleted successfully.");
          else CommonView.displayError("Failed to delete enquiry.");
      }
 
-     // --- Password Change Methods (Implementation of PasswordChangeView) ---
+     // --- Password Change Methods ---
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }

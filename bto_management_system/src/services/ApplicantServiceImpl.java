@@ -1,139 +1,140 @@
 package services;
 
 import interfaces.IApplicantService;
-import interfaces.IProjectService; // Needed for eligibility checks
+import interfaces.IProjectService;
 import models.*;
 import enums.*;
 import stores.DataStore;
 import utils.TextFormatUtil;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of the IApplicantService interface.
+ * Handles business logic related to BTO applicants.
+ */
 public class ApplicantServiceImpl implements IApplicantService {
 
-    private final IProjectService projectService; // Inject dependency
+    private final IProjectService projectService;
 
     public ApplicantServiceImpl() {
-        // Simple instantiation, consider dependency injection framework in larger apps
         this.projectService = new ProjectServiceImpl();
     }
 
     @Override
     public BTOApplication viewApplicationStatus(String applicantNric) {
-        // Find the application that is not Unsuccessful or Withdrawn
+        if (applicantNric == null || applicantNric.trim().isEmpty()) return null;
         return DataStore.getApplications().values().stream()
-                .filter(app -> app.getApplicantNric().equals(applicantNric))
+                .filter(app -> applicantNric.equals(app.getApplicantNric()))
                 .filter(app -> app.getStatus() != BTOApplicationStatus.UNSUCCESSFUL &&
                                app.getStatus() != BTOApplicationStatus.WITHDRAWN)
                 .findFirst()
-                .orElse(null); // Return null if no active application found
+                .orElse(null);
     }
 
     @Override
     public BTOApplication applyForProject(String applicantNric, int projectId, FlatType flatType) {
         User applicant = DataStore.getUserByNric(applicantNric);
-        Project project = DataStore.getProjectById(projectId);
+        Project project = projectService.getProjectById(projectId);
 
-        // 1. Basic Validation
         if (applicant == null || project == null) {
-            System.err.println(TextFormatUtil.error("Apply failed: Applicant or Project not found."));
+            System.err.println(TextFormatUtil.error("Apply failed: Applicant ("+applicantNric+") or Project (ID:"+projectId+") not found."));
             return null;
         }
         if (applicant.getRole() == UserRole.MANAGER) {
              System.err.println(TextFormatUtil.error("Apply failed: HDB Managers cannot apply for BTO projects."));
              return null;
         }
+         if (applicant.getRole() == UserRole.OFFICER) {
+             Project handlingProject = projectService.getHandlingProjectForOfficer(applicantNric);
+             if (handlingProject != null && handlingProject.getProjectId() == projectId) {
+                  System.err.println(TextFormatUtil.error("Apply failed: HDB Officers cannot apply for the project ("+projectId+") they are assigned to handle."));
+                  return null;
+             }
+         }
 
-        // 2. Check for Existing Application
         BTOApplication existingApp = viewApplicationStatus(applicantNric);
         if (existingApp != null) {
-            System.err.println(TextFormatUtil.error("Apply failed: Applicant already has an active application (ID: " + existingApp.getApplicationId() + ", Status: " + existingApp.getStatus() + ")."));
+            System.err.println(TextFormatUtil.error("Apply failed: Applicant ("+applicantNric+") already has an active application (ID: " + existingApp.getApplicationId() + ", Status: " + existingApp.getStatus() + "). Cannot apply for multiple projects."));
             return null;
         }
 
-        // 3. Check Project Application Period
+        if (!project.isVisible()) {
+             System.err.println(TextFormatUtil.error("Apply failed: Project " + project.getProjectId() + " (" + project.getProjectName() + ") is currently not visible to applicants."));
+             return null;
+        }
         if (!projectService.isProjectWithinApplicationPeriod(projectId, new java.util.Date())) {
-             System.err.println(TextFormatUtil.error("Apply failed: Project " + project.getProjectName() + " is not open for applications now."));
+             System.err.println(TextFormatUtil.error("Apply failed: Project " + project.getProjectId() + " (" + project.getProjectName() + ") is not open for applications at this time."));
              return null;
         }
-
-        // 4. Check Applicant Eligibility for Flat Type
-        if (!isApplicantEligible(applicant, flatType)) {
-             System.err.println(TextFormatUtil.error("Apply failed: Applicant ("+applicant.getMaritalStatus()+", "+applicant.getAge()+"yo) is not eligible for " + flatType.getDisplayName() + "."));
-             return null;
-        }
-
-        // 5. Check if Project offers the Flat Type (basic check, manager handles supply later)
          if (project.getTotalUnits().getOrDefault(flatType, 0) <= 0) {
-             System.err.println(TextFormatUtil.error("Apply failed: Project " + project.getProjectName() + " does not offer " + flatType.getDisplayName() + "."));
+             System.err.println(TextFormatUtil.error("Apply failed: Project " + project.getProjectId() + " (" + project.getProjectName() + ") does not offer " + flatType.getDisplayName() + " flats."));
              return null;
          }
 
-
-        // 6. Create and Store Application
-        BTOApplication newApplication = new BTOApplication(applicantNric, projectId, flatType);
-        DataStore.addApplication(newApplication);
-
-        // Update Applicant's state if tracking currentApplicationId in Applicant model
-        if (applicant instanceof Applicant) { // Check if it's actually an Applicant object
-             ((Applicant) applicant).setCurrentApplicationId(newApplication.getApplicationId());
+        if (!isApplicantEligible(applicant, flatType)) {
+             System.err.println(TextFormatUtil.error("Apply failed: Applicant profile ("+applicant.getMaritalStatus()+", "+applicant.getAge()+"yo) is not eligible for the selected flat type: " + flatType.getDisplayName() + "."));
+             return null;
         }
 
-
-        DataStore.saveAllData(); // Persist the new application
-
+        BTOApplication newApplication = new BTOApplication(applicantNric, projectId, flatType);
+        DataStore.addApplication(newApplication);
+        if (applicant instanceof Applicant) {
+             ((Applicant) applicant).setCurrentApplicationId(newApplication.getApplicationId());
+        }
+        DataStore.saveAllData();
         return newApplication;
     }
 
-    // Helper method for eligibility check based on brief rules
     private boolean isApplicantEligible(User applicant, FlatType flatType) {
         int age = applicant.getAge();
         MaritalStatus status = applicant.getMaritalStatus();
-
         if (status == MaritalStatus.SINGLE) {
-            // Singles >= 35 can ONLY apply for 2-Room
             return age >= 35 && flatType == FlatType.TWO_ROOM;
         } else if (status == MaritalStatus.MARRIED) {
-            // Married >= 21 can apply for any (2-Room or 3-Room)
             return age >= 21 && (flatType == FlatType.TWO_ROOM || flatType == FlatType.THREE_ROOM);
         }
-        return false; // Default ineligible
+        return false;
     }
 
     @Override
     public boolean requestWithdrawal(int applicationId, String applicantNric) {
         BTOApplication application = DataStore.getApplicationById(applicationId);
-
         if (application == null) {
-             System.err.println(TextFormatUtil.error("Withdrawal failed: Application not found."));
+             System.err.println(TextFormatUtil.error("Withdrawal request failed: Application ID " + applicationId + " not found."));
             return false;
         }
-
-        // Verify ownership
-        if (!application.getApplicantNric().equals(applicantNric)) {
-             System.err.println(TextFormatUtil.error("Withdrawal failed: You can only withdraw your own application."));
+        if (!Objects.equals(application.getApplicantNric(), applicantNric)) {
+             System.err.println(TextFormatUtil.error("Withdrawal request failed: User " + applicantNric + " does not own application " + applicationId + "."));
             return false;
         }
-
-        // Check if already withdrawn or requested
-        if (application.getStatus() == BTOApplicationStatus.WITHDRAWN || application.isWithdrawalRequested()) {
-             System.err.println(TextFormatUtil.warning("Withdrawal failed: Application already withdrawn or request pending."));
+        if (application.getStatus() == BTOApplicationStatus.WITHDRAWN) {
+             System.err.println(TextFormatUtil.warning("Withdrawal request failed: Application " + applicationId + " is already withdrawn."));
              return false;
         }
+         if (application.isWithdrawalRequested()) {
+             System.err.println(TextFormatUtil.warning("Withdrawal request failed: A withdrawal request is already pending for application " + applicationId + "."));
+             return false;
+        }
+          if (application.getStatus() == BTOApplicationStatus.UNSUCCESSFUL) {
+              System.err.println(TextFormatUtil.warning("Withdrawal request ignored: Application " + applicationId + " was already unsuccessful."));
+              return false;
+          }
 
-        // Mark for withdrawal
         application.requestWithdrawal();
-        DataStore.saveAllData(); // Persist the request flag change
+        DataStore.saveAllData();
         return true;
     }
 
     @Override
     public List<Project> filterProjects(List<Project> projects, Map<String, String> filters) {
+         if (projects == null) return Collections.emptyList();
          if (filters == null || filters.isEmpty()) {
-            return projects; // No filters applied
+            return projects;
         }
 
         return projects.stream()
@@ -141,37 +142,40 @@ public class ApplicantServiceImpl implements IApplicantService {
                 .collect(Collectors.toList());
     }
 
-     private boolean matchesFilters(Project project, Map<String, String> filters) {
+     /** Helper method to check if a single project matches all active filters */
+    private boolean matchesFilters(Project project, Map<String, String> filters) {
         for (Map.Entry<String, String> entry : filters.entrySet()) {
-            String key = entry.getKey().toLowerCase();
-            String value = entry.getValue(); // Keep value case for potential exact match needs
+            String key = entry.getKey().toLowerCase().trim();
+            String value = entry.getValue(); // Filter value (e.g., "3-Room")
 
-            if (value == null || value.trim().isEmpty()) continue; // Ignore empty filter values
+            if (value == null || value.trim().isEmpty()) continue;
+
+            String valueTrimmedLower = value.trim().toLowerCase();
 
             switch (key) {
                 case "neighborhood":
-                case "location": // Allow alias
+                case "location":
                     if (!project.getNeighborhood().equalsIgnoreCase(value.trim())) {
                         return false;
                     }
                     break;
                 case "flattype":
+                    // The value here should be the display name ("3-Room")
                     FlatType filterType = FlatType.fromDisplayName(value.trim());
-                     if (filterType == null) {
-                         System.err.println(TextFormatUtil.warning("Ignoring invalid flat type filter: " + value));
-                         continue; // Ignore invalid filter, or return false? Decide behavior. Let's ignore.
-                     }
-                    // Check if the project *offers* this flat type
-                    if (project.getTotalUnits().getOrDefault(filterType, 0) <= 0) {
-                        return false;
+                    if (filterType == null) {
+                        // This shouldn't happen if the View validated correctly
+                        System.err.println("Internal Warning: Invalid flat type '" + value + "' reached service filter logic.");
+                        continue; // Ignore invalid filter from map
                     }
-                    break;
-                // Add more filters as needed (e.g., project name contains, date range)
+                    // *** Check if the project OFFERS this type (Total Units > 0) ***
+                    if (project.getTotalUnits().getOrDefault(filterType, 0) <= 0) {
+                        return false; // Project doesn't offer this type, so filter fails
+                    }
+                    break; // IMPORTANT: Added break statement here!
                 default:
-                    System.err.println(TextFormatUtil.warning("Ignoring unknown filter key: " + key));
+                    // Ignore unknown filter keys silently
             }
         }
-        return true; // All applied filters matched
+        return true; // All active, valid filter conditions were met
     }
-
 }

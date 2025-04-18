@@ -1,6 +1,0 @@
-enquires
-EnquiryID,SubmitterNRIC,ProjectID,Status,SubmissionDate,LastUpdateDate,Content,Replies(; separated)
-1,S2345678B,1,ANSWERED,2024-01-18,2024-01-19,What are the nearby amenities?,[2024-01-19 10:30:45 EST] Frank Lee (OFFICER): Near Tampines Hub and Century Square.
-2,S1234567A,1,OPEN,2024-01-20,2024-01-20,Is pet ownership allowed?,
-3,T1111111D,2,OPEN,2024-03-03,2024-03-03,When is the estimated completion date?,
-4,S2345678B,1,ANSWERED,2024-01-21,2024-01-22,Can I change my flat type choice after applying?,"[2024-01-22 14:00:00 EST] Grace Ho (MANAGER): Generally no, please confirm your choice before applying."
