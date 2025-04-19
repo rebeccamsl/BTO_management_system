@@ -4,8 +4,9 @@ import utils.InputUtil;
 import utils.TextFormatUtil;
 import models.*;
 import enums.*;
-import stores.DataStore; // For lookups in display methods
+import stores.DataStore; 
 
+import java.util.Comparator; 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -15,13 +16,9 @@ import java.util.Map;
  * Handles the display and input for the HDB Manager user interface.
  * Implements PasswordChangeView for the password change functionality.
  */
-public class HDBManagerMenu implements controllers.UserController.PasswordChangeView {
+public class HDBManagerMenu implements controllers.UserController.PasswordChangeView { 
 
-    /**
-     * Displays the main menu for HDB Managers and gets their choice.
-     * @return The integer choice selected by the user.
-     */
-    public int displayManagerMenu() {
+     public int displayManagerMenu() {
         CommonView.displayNavigationBar("HDB Manager Menu");
         System.out.println("--- Project Management ---");
         System.out.println(" 1. Create New BTO Project");
@@ -45,12 +42,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
         return InputUtil.readIntInRange("Enter your choice: ", 0, 13);
     }
 
-    // --- Project CRUD ---
-     /**
-      * Prompts for and collects details for creating a new project.
-      * @param managerNric The NRIC of the manager creating the project.
-      * @return A temporary Project object populated with entered details, or null if cancelled/invalid.
-      */
+    // Project CRUD
      public Project getNewProjectDetails(String managerNric) {
          CommonView.displayNavigationBar("Create New BTO Project");
          String name = InputUtil.readString("Enter Project Name: ");
@@ -71,7 +63,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
           }
 
          Date openDate = InputUtil.readDate("Enter Application Opening Date");
-         if (openDate == null) { CommonView.displayMessage("Creation cancelled."); return null; } // Date parsing failed
+         if (openDate == null) { CommonView.displayMessage("Creation cancelled."); return null; }
          Date closeDate = InputUtil.readDate("Enter Application Closing Date");
          if (closeDate == null) { CommonView.displayMessage("Creation cancelled."); return null; }
 
@@ -82,14 +74,9 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
 
          int slots = InputUtil.readIntInRange("Enter Max HDB Officer Slots (1-10): ", 1, 10);
 
-         // Return temporary object holding data for the service
          return new Project(name.trim(), neighborhood.trim(), units, openDate, closeDate, managerNric, slots);
      }
 
-     /**
-      * Displays the result of a project creation attempt.
-      * @param project The created Project object, or null if failed.
-      */
      public void displayCreateProjectResult(Project project) {
          if (project != null) {
              CommonView.displaySuccess("Project '" + project.getProjectName() + "' created successfully (ID: " + project.getProjectId() + "). Visibility is OFF by default.");
@@ -98,11 +85,6 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          }
      }
 
-     /**
-      * Displays a list of projects in a table format suitable for managers.
-      * @param title The title for the list.
-      * @param projects The list of Project objects to display.
-      */
      public void displayProjectList(String title, List<Project> projects) {
          System.out.println("\n--- " + title + " ---");
          if (projects == null || projects.isEmpty()) {
@@ -112,6 +94,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
           String headerFormat = "%-5s | %-25s | %-15s | %-10s | %-10s | %-8s | %-10s | %s\n";
           String rowFormat    = "%-5d | %-25s | %-15s | %-10s | %-10s | %-8s | %-10s | %s\n";
           CommonView.displayTableHeader(headerFormat, "ID", "Project Name", "Neighborhood", "Open Date", "Close Date", "Visible", "Slots", "Manager");
+          projects.sort(Comparator.comparingInt(Project::getProjectId)); // Sort by ID for consistent display
           for (Project p : projects) {
               String visibilityStr = p.isVisible() ? TextFormatUtil.success("Yes") : TextFormatUtil.warning("No");
               String slotsInfo = p.getCurrentOfficerCount() + "/" + p.getMaxOfficerSlots();
@@ -127,30 +110,19 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          }
      }
 
-      /**
-       * Prompts the user for a Project ID for a specific management action.
-       * @param action Description of the action.
-       * @return The Project ID entered, or 0 to cancel.
-       */
       public int getProjectIdToManage(String action) {
           return InputUtil.readInt("Enter the Project ID to " + action + " (or 0 to cancel): ");
       }
 
-      /**
-       * Prompts for updated project details during editing.
-       * @param existingProject The current Project object being edited.
-       * @return A temporary Project object with updated details, or null if cancelled/invalid.
-       */
       public Project getEditedProjectDetails(Project existingProject) {
            if (existingProject == null) return null;
 
            CommonView.displayNavigationBar("Editing Project: " + existingProject.getProjectName() + " (ID: " + existingProject.getProjectId() + ")");
            System.out.println("Enter new details (Press Enter to keep current value):");
 
-           String name = InputUtil.readString("Project Name [" + existingProject.getProjectName() + "]: ");
-           String neighborhood = InputUtil.readString("Neighborhood [" + existingProject.getNeighborhood() + "]: ");
+           String name = InputUtil.readStringAllowEmpty("Project Name [" + existingProject.getProjectName() + "]: ");
+           String neighborhood = InputUtil.readStringAllowEmpty("Neighborhood [" + existingProject.getNeighborhood() + "]: ");
 
-           // Unit editing restriction check
            boolean appsExist = DataStore.getApplications().values().stream().anyMatch(a -> a.getProjectId() == existingProject.getProjectId());
            Map<FlatType, Integer> units = new HashMap<>(existingProject.getTotalUnits());
             if (!appsExist) {
@@ -158,7 +130,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
                  Map<FlatType, Integer> newUnits = new HashMap<>();
                  for (FlatType type : FlatType.values()) {
                      int currentCount = units.getOrDefault(type, 0);
-                     String countStr = InputUtil.readString("Total " + type.getDisplayName() + " units [" + currentCount + "]: ");
+                     String countStr = InputUtil.readStringAllowEmpty("Total " + type.getDisplayName() + " units [" + currentCount + "]: ");
                      if (!countStr.isEmpty()) {
                          int newCount = InputUtil.safeParseInt(countStr, -1);
                          if (newCount < 0) { CommonView.displayError("Unit count cannot be negative. Aborting edit."); return null; }
@@ -172,56 +144,49 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
                 CommonView.displayWarning("Applications exist for this project. Total unit counts cannot be changed.");
             }
 
-           String openDateStr = InputUtil.readString("App Opening Date (yyyy-MM-dd) [" + utils.DateUtils.formatDate(existingProject.getApplicationOpeningDate()) + "]: ");
-           String closeDateStr = InputUtil.readString("App Closing Date (yyyy-MM-dd) [" + utils.DateUtils.formatDate(existingProject.getApplicationClosingDate()) + "]: ");
-           String slotsStr = InputUtil.readString("Max Officer Slots (1-10) [" + existingProject.getMaxOfficerSlots() + "]: ");
+           String openDateStr = InputUtil.readStringAllowEmpty("App Opening Date (yyyy-MM-dd) [" + utils.DateUtils.formatDate(existingProject.getApplicationOpeningDate()) + "]: ");
+           String closeDateStr = InputUtil.readStringAllowEmpty("App Closing Date (yyyy-MM-dd) [" + utils.DateUtils.formatDate(existingProject.getApplicationClosingDate()) + "]: ");
+           String slotsStr = InputUtil.readStringAllowEmpty("Max Officer Slots (1-10) [" + existingProject.getMaxOfficerSlots() + "]: ");
 
            Date openDate = openDateStr.isEmpty() ? existingProject.getApplicationOpeningDate() : utils.DateUtils.parseDate(openDateStr);
            Date closeDate = closeDateStr.isEmpty() ? existingProject.getApplicationClosingDate() : utils.DateUtils.parseDate(closeDateStr);
            int slots = slotsStr.isEmpty() ? existingProject.getMaxOfficerSlots() : InputUtil.safeParseInt(slotsStr, -1);
 
-           // View-level validation
-            if (openDate == null || closeDate == null) { CommonView.displayError("Invalid date format entered. Aborting edit."); return null; }
+            if (openDate == null || closeDate == null) { CommonView.displayError("Invalid date format entered (use yyyy-MM-dd or 0 to cancel). Aborting edit."); return null; }
             if (openDate.after(closeDate)) { CommonView.displayError("Closing date cannot be before opening date. Aborting edit."); return null; }
             if (slots == -1 || slots < 1 || slots > 10) { CommonView.displayError("Invalid officer slots value (1-10). Aborting edit."); return null; }
 
-           // Create temporary object for service layer
             Project updated = new Project(
                 name.isEmpty() ? existingProject.getProjectName() : name.trim(),
                 neighborhood.isEmpty() ? existingProject.getNeighborhood() : neighborhood.trim(),
                 units, openDate, closeDate,
                 existingProject.getAssignedHDBManagerNric(), slots);
-             updated.setVisibility(existingProject.isVisible()); // Maintain current visibility during edit
-             updated.setAvailableUnits(existingProject.getAvailableUnits()); // Available units not directly edited
+             updated.setVisibility(existingProject.isVisible());
+             updated.setAvailableUnits(existingProject.getAvailableUnits());
 
              return updated;
       }
 
-      /** Displays edit result. */
       public void displayEditProjectResult(boolean success) {
            if(success) CommonView.displaySuccess("Project details updated successfully.");
            else CommonView.displayError("Failed to update project details.");
       }
 
-      /** Confirms project deletion. */
       public boolean confirmDeleteProject(String projectName) {
-          CommonView.displayWarning("WARNING: Deleting a project is irreversible and will remove all associated applications, enquiries, registrations, and bookings.");
+          CommonView.displayWarning("WARNING: Deleting a project is irreversible and will remove all associated applications, enquiries, etc.");
           return InputUtil.readBooleanYN("Are you absolutely sure you want to DELETE project '" + projectName + "'? (y/n): ");
       }
 
-       /** Displays delete result. */
        public void displayDeleteProjectResult(boolean success) {
            if(success) CommonView.displaySuccess("Project deleted successfully.");
            else CommonView.displayError("Failed to delete project.");
       }
 
-       /** Prompts for visibility toggle confirmation. */
        public boolean getVisibilityToggleChoice(boolean currentVisibility) {
             System.out.println("Current project visibility is: " + TextFormatUtil.bold(currentVisibility ? "ON" : "OFF"));
             return InputUtil.readBooleanYN("Do you want to set visibility to " + TextFormatUtil.bold(currentVisibility ? "OFF" : "ON") + "? (y/n): ");
        }
 
-        /** Displays visibility toggle result. */
         public void displayToggleVisibilityResult(boolean success, boolean newState) {
             if (success) CommonView.displaySuccess("Project visibility successfully set to " + TextFormatUtil.bold(newState ? "ON" : "OFF") + ".");
             else CommonView.displayError("Failed to toggle project visibility.");
@@ -229,7 +194,6 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
 
 
      // Approval Menu
-     /** Displays menu for managing officer registrations. */
      public int displayOfficerRegistrationMenu() {
          CommonView.displayNavigationBar("Manage Officer Registrations for Selected Project");
          System.out.println("1. Approve Registration");
@@ -238,7 +202,6 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          return InputUtil.readIntInRange("Enter choice: ", 0, 2);
      }
 
-      /** Displays list of officer registrations. */
       public void displayOfficerRegistrationList(String title, List<HDBOfficerRegistration> registrations) {
          System.out.println("\n--- " + title + " ---");
          if (registrations == null || registrations.isEmpty()) {
@@ -248,30 +211,28 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
           String headerFormat = "%-7s | %-20s | %-9s | %-10s | %s\n";
           String rowFormat    = "%-7d | %-20s | %-9s | %-10s | %s\n";
           CommonView.displayTableHeader(headerFormat, "Reg ID", "Officer Name", "NRIC", "Status", "Request Date");
+         registrations.sort(Comparator.comparingInt(HDBOfficerRegistration::getRegistrationId)); // Sort by ID
          for (HDBOfficerRegistration reg : registrations) {
              User officer = DataStore.getUserByNric(reg.getOfficerNric());
              CommonView.displayTableRow(rowFormat,
                   reg.getRegistrationId(),
                   (officer != null ? officer.getName() : "N/A"),
                   reg.getOfficerNric(),
-                  reg.getStatus(), // Should be PENDING when shown here
+                  reg.getStatus(),
                   utils.DateUtils.formatDate(reg.getRequestDate()));
          }
      }
 
-     /** Prompts for Registration ID to manage. */
      public int getRegistrationIdToManage(String action) {
          return InputUtil.readInt("Enter Registration ID to " + action + " (or 0 to cancel): ");
      }
 
-      /** Displays officer registration approval/rejection result. */
       public void displayOfficerApprovalResult(boolean success, String action) {
          if (success) CommonView.displaySuccess("Officer registration " + action + " successfully.");
          else CommonView.displayError("Failed to " + action + " officer registration.");
      }
 
       // BTO Application Approval
-       /** Displays menu for managing BTO applications. */
        public int displayBTOApplicationMenu() {
          CommonView.displayNavigationBar("Manage BTO Applications for Selected Project");
          System.out.println("1. Approve Application");
@@ -280,7 +241,6 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          return InputUtil.readIntInRange("Enter choice: ", 0, 2);
      }
 
-      /** Displays list of BTO applications. */
       public void displayBTOApplicationList(String title, List<BTOApplication> applications) {
            System.out.println("\n--- " + title + " ---");
            if (applications == null || applications.isEmpty()) {
@@ -290,10 +250,11 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
             String headerFormat = "%-7s | %-20s | %-9s | %-4s | %-8s | %-10s | %s\n";
             String rowFormat    = "%-7d | %-20s | %-9s | %-4s | %-8s | %-10s | %s\n";
             CommonView.displayTableHeader(headerFormat, "App ID", "Applicant Name", "NRIC", "Age", "M.Status", "Applied", "Withdrawal?");
+            applications.sort(Comparator.comparingInt(BTOApplication::getApplicationId)); // Sort by ID
            for (BTOApplication app : applications) {
                User applicant = DataStore.getUserByNric(app.getApplicantNric());
                String ageStr = (applicant != null) ? String.valueOf(applicant.getAge()) : "N/A";
-               String maritalStr = (applicant != null) ? applicant.getMaritalStatus().name() : "N/A";
+               String maritalStr = (applicant != null ? applicant.getMaritalStatus().name() : "N/A");
                String withdrawalStatus = app.isWithdrawalRequested() ? TextFormatUtil.warning("YES") : "No";
                CommonView.displayTableRow(rowFormat,
                     app.getApplicationId(),
@@ -307,19 +268,16 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
            }
       }
 
-       /** Prompts for Application ID to manage. */
        public int getApplicationIdToManage(String action) {
            return InputUtil.readInt("Enter Application ID to " + action + " (or 0 to cancel): ");
        }
 
-        /** Displays BTO application approval/rejection result. */
         public void displayBTOApprovalResult(boolean success, String action) {
            if (success) CommonView.displaySuccess("BTO Application " + action + " successfully.");
            else CommonView.displayError("Failed to " + action + " BTO application.");
        }
 
         // Withdrawal Approval
-        /** Displays menu for managing withdrawal requests. */
         public int displayWithdrawalMenu() {
              CommonView.displayNavigationBar("Manage Application Withdrawals for Selected Project");
              System.out.println("1. Approve Withdrawal Request");
@@ -328,14 +286,12 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
              return InputUtil.readIntInRange("Enter choice: ", 0, 2);
          }
 
-         /** Displays withdrawal approval/rejection result. */
          public void displayWithdrawalApprovalResult(boolean success, String action) {
             if (success) CommonView.displaySuccess("Application withdrawal request " + action + " successfully.");
             else CommonView.displayError("Failed to " + action + " withdrawal request.");
         }
 
      // Enquiries
-     /** Displays choice for viewing enquiries. */
       public int displayEnquiryViewChoice() {
           System.out.println("\n--- View Enquiries ---");
           System.out.println("1. View Enquiries for a Specific Project I Manage");
@@ -346,43 +302,58 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
 
 
      // Reporting
-     /** Prompts for report filter criteria. */
+     /**
+      * Prompts the user for filter criteria for the booking report. Uses allow empty.
+      * @return A map containing the entered filters.
+      */
      public Map<String, String> getReportFilters() {
          Map<String, String> filters = new HashMap<>();
          CommonView.displayNavigationBar("Generate Booking Report");
-         System.out.println("Enter filter criteria (Leave blank to skip filter):");
+         System.out.println("Enter filter criteria (Press Enter to skip filter):");
 
-         String projName = InputUtil.readString("Filter by Project Name: ");
+         String projName = InputUtil.readStringAllowEmpty("Filter by Project Name: ");
          if (!projName.isEmpty()) filters.put("projectName", projName.trim());
 
-          String flatTypeStr = InputUtil.readString("Filter by Flat Type (e.g., 2-Room): ");
+         String flatTypeStr = InputUtil.readStringAllowEmpty("Filter by Flat Type (e.g., 2-Room): ");
          if (!flatTypeStr.isEmpty()) {
-             if (FlatType.fromDisplayName(flatTypeStr.trim()) != null) {
-                 filters.put("flatType", flatTypeStr.trim());
-              } else {
-                  CommonView.displayWarning("Invalid flat type filter entered, ignoring.");
-              }
+             FlatType validatedType = FlatType.fromDisplayName(flatTypeStr.trim());
+             if (validatedType != null) {
+                 filters.put("flatType", validatedType.getDisplayName()); // Use display name
+             } else {
+                 CommonView.displayWarning("Invalid flat type filter '" + flatTypeStr + "' entered, ignoring.");
+             }
          }
 
-         String maritalStatusStr = InputUtil.readString("Filter by Marital Status (SINGLE/MARRIED): ");
+         String maritalStatusStr = InputUtil.readStringAllowEmpty("Filter by Marital Status (SINGLE/MARRIED): ");
          if (!maritalStatusStr.isEmpty()) {
              try {
-                  MaritalStatus.valueOf(maritalStatusStr.trim().toUpperCase());
+                  MaritalStatus.valueOf(maritalStatusStr.trim().toUpperCase()); // Validate
                   filters.put("maritalStatus", maritalStatusStr.trim().toUpperCase());
               } catch (IllegalArgumentException e) {
-                  CommonView.displayWarning("Invalid marital status filter entered, ignoring.");
+                  CommonView.displayWarning("Invalid marital status filter '" + maritalStatusStr + "' entered, ignoring.");
               }
          }
 
-         String minAgeStr = InputUtil.readString("Filter by Minimum Age: ");
-         if (!minAgeStr.isEmpty()) filters.put("minAge", minAgeStr.trim());
-         String maxAgeStr = InputUtil.readString("Filter by Maximum Age: ");
-         if (!maxAgeStr.isEmpty()) filters.put("maxAge", maxAgeStr.trim());
+         String minAgeStr = InputUtil.readStringAllowEmpty("Filter by Minimum Age: ");
+         if (!minAgeStr.isEmpty()) {
+             // Basic check if it's a number, service layer handles actual comparison
+             try { Integer.parseInt(minAgeStr.trim()); filters.put("minAge", minAgeStr.trim()); }
+             catch (NumberFormatException e) { CommonView.displayWarning("Invalid minimum age '" + minAgeStr + "' entered, ignoring.");}
+         }
+         String maxAgeStr = InputUtil.readStringAllowEmpty("Filter by Maximum Age: ");
+         if (!maxAgeStr.isEmpty()) {
+             try { Integer.parseInt(maxAgeStr.trim()); filters.put("maxAge", maxAgeStr.trim()); }
+             catch (NumberFormatException e) { CommonView.displayWarning("Invalid maximum age '" + maxAgeStr + "' entered, ignoring.");}
+         }
 
          return filters;
      }
 
-      /** Displays the generated report. */
+
+      /**
+       * Displays the generated report using the Report object's display method.
+       * @param report The generated Report object.
+       */
       public void displayReport(Report report) {
          if (report == null) {
              CommonView.displayError("Failed to generate report.");
@@ -391,7 +362,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
          }
      }
 
-    // Password Change Methods, Implementation of PasswordChangeView
+    // Password Change Methods
      @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }
