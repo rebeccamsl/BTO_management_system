@@ -38,12 +38,12 @@ public class HDBManagerController extends UserController implements UserControll
 
 
     public HDBManagerController() {
-        super(); // Initialize UserController (which initializes userService)
+        super(); // Initialize UserController 
         this.managerMenu = new HDBManagerMenu();
         this.applicantView = new ApplicantMenu();
         this.officerView = new HDBOfficerMenu();
         
-        // Instantiate all required services
+        // Instantiate services
         this.projectService = new ProjectServiceImpl();
         this.officerService = new HDBOfficerServiceImpl();
         this.managerService = new HDBManagerServiceImpl();
@@ -100,11 +100,10 @@ public class HDBManagerController extends UserController implements UserControll
         } while (choice != 0 && AuthStore.isLoggedIn());
     }
 
-    // --- Project Management ---
+    // Project Management
     private void createNewProject(String managerNric) {
          Project tempProjectData = managerMenu.getNewProjectDetails(managerNric);
          if (tempProjectData == null) {
-             // View already displayed cancellation or error message
              return;
          }
          Project createdProject = projectService.createProject(
@@ -195,7 +194,7 @@ public class HDBManagerController extends UserController implements UserControll
          }
      }
 
-    // --- Approvals ---
+    // Approvals
      private void manageOfficerRegistrations(String managerNric) {
           List<Project> myProjects = projectService.getProjectsManagedBy(managerNric);
            if (myProjects.isEmpty()){ CommonView.displayWarning("You are not managing any projects."); return; }
@@ -296,13 +295,13 @@ public class HDBManagerController extends UserController implements UserControll
           if (choice == 1) {
               success = managerService.approveWithdrawal(appId, managerNric);
               managerMenu.displayWithdrawalApprovalResult(success, "approved");
-          } else { // choice == 2
+          } else { 
               success = managerService.rejectWithdrawal(appId, managerNric);
               managerMenu.displayWithdrawalApprovalResult(success, "rejected");
           }
      }
 
-    // --- Enquiries ---
+    // Enquiries
     private void viewEnquiries(String managerNric) {
          int choice = managerMenu.displayEnquiryViewChoice();
          if (choice == 0) return;
@@ -359,14 +358,14 @@ public class HDBManagerController extends UserController implements UserControll
           officerView.displayReplyResult(success); 
      }
 
-    // --- Reporting ---
+    //Report
     private void generateReport() {
          this.lastReportFilters = managerMenu.getReportFilters();
          Report report = reportService.generateBookingReport(this.lastReportFilters);
          managerMenu.displayReport(report);
      }
 
-    // --- Password Change ---
+    // Password Change
     @Override public void displayPasswordChangePrompt() { managerMenu.displayPasswordChangePrompt(); }
     @Override public String readOldPassword() { return managerMenu.readOldPassword(); }
     @Override public String readNewPassword() { return managerMenu.readNewPassword(); }
