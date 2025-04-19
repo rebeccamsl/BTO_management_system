@@ -16,7 +16,7 @@ import java.util.Comparator;
  * Handles the display and input for the Applicant user interface.
  * Implements PasswordChangeView for the password change functionality.
  */
-public class ApplicantMenu implements controllers.UserController.PasswordChangeView { // Implement interface
+public class ApplicantMenu implements controllers.UserController.PasswordChangeView { 
 
      /**
       * Displays the main menu for Applicants and gets their choice.
@@ -278,7 +278,7 @@ public class ApplicantMenu implements controllers.UserController.PasswordChangeV
      }
 
      // Password Change Methods
-     @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
+     @Override public void displayPasswordChangePrompt() {System.out.println("\n--- Change Password ---");}
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }
      @Override public String readConfirmNewPassword() { return InputUtil.readString("Confirm New Password: "); }

@@ -363,7 +363,7 @@ public class HDBManagerMenu implements controllers.UserController.PasswordChange
      }
 
     // Password Change Methods
-     @Override public void displayPasswordChangePrompt() { System.out.println("\n--- Change Password ---"); CommonView.displayMessage("Note: Default password is 'password'."); }
+     @Override public void displayPasswordChangePrompt() {System.out.println("\n--- Change Password ---");}
      @Override public String readOldPassword() { return InputUtil.readString("Enter Old Password: "); }
      @Override public String readNewPassword() { return InputUtil.readString("Enter New Password: "); }
      @Override public String readConfirmNewPassword() { return InputUtil.readString("Confirm New Password: "); }
